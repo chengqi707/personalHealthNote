@@ -1,3 +1,4 @@
+import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -18,6 +19,19 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // 读取local.properties配置
+        val properties = Properties()
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            properties.load(localPropertiesFile.inputStream())
+        }
+
+        // 注入配置到BuildConfig
+        buildConfigField("String", "DOUBAO_API_KEY", "\"${properties.getProperty("DOUBAO_API_KEY", "")}\"")
+        buildConfigField("String", "DOUBAO_API_URL", "\"${properties.getProperty("DOUBAO_API_URL", "")}\"")
+        buildConfigField("String", "DOUBAO_MODEL", "\"${properties.getProperty("DOUBAO_MODEL", "")}\"")
+        buildConfigField("String", "SERVER_BASE_URL", "\"${properties.getProperty("SERVER_BASE_URL", "")}\"")
     }
 
     buildTypes {
@@ -37,9 +51,10 @@ android {
         jvmTarget = "11"
     }
 
-    // 启用 ViewBinding
+    // 启用 ViewBinding 和 BuildConfig
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 }
 

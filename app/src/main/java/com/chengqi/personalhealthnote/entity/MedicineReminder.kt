@@ -21,7 +21,9 @@ data class MedicineReminder(
     val beforeAfterMeal: Int,        // 饭前饭后：0-不限，1-饭前，2-饭后，3-饭中
     val notes: String,               // 备注
     val createTime: Long = System.currentTimeMillis(),
-    val updateTime: Long = System.currentTimeMillis()
+    val updateTime: Long = System.currentTimeMillis(),
+    val isSync: Int = 0,         // 是否已同步：0未同步 1已同步
+    val deleteFlag: Int = 0      // 是否已删除：0未删除 1已删除
 ) {
     /**
      * 获取服用时间描述

@@ -20,7 +20,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
 
     companion object {
         private const val DATABASE_NAME = "health_note.db"
-        private const val DATABASE_VERSION = 2
+        private const val DATABASE_VERSION = 3
 
         // 健康记录表
         private const val TABLE_HEALTH_RECORD = "health_record"
@@ -38,6 +38,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         private const val COLUMN_IMAGE_PATHS = "image_paths" // 就诊/检查单据图片路径，JSON数组格式
         private const val COLUMN_CREATE_TIME = "create_time"
         private const val COLUMN_UPDATE_TIME = "update_time"
+        private const val COLUMN_IS_SYNC = "is_sync" // 是否已同步：0未同步 1已同步
+        private const val COLUMN_DELETE_FLAG = "delete_flag" // 是否已删除：0未删除 1已删除
 
         // 用药提醒表
         private const val TABLE_MEDICINE_REMINDER = "medicine_reminder"
@@ -55,6 +57,9 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         private const val COLUMN_END_DATE = "end_date"
         private const val COLUMN_BEFORE_AFTER_MEAL = "before_after_meal"
         private const val COLUMN_MEDICINE_NOTES = "medicine_notes"
+        // 同步相关字段，和健康记录表共用
+        // private const val COLUMN_IS_SYNC = "is_sync"
+        // private const val COLUMN_DELETE_FLAG = "delete_flag"
 
         // 创建健康记录表的SQL
         private const val CREATE_HEALTH_RECORD_TABLE = """
@@ -72,7 +77,9 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
                 $COLUMN_NOTES TEXT,
                 $COLUMN_IMAGE_PATHS TEXT DEFAULT '',
                 $COLUMN_CREATE_TIME INTEGER DEFAULT 0,
-                $COLUMN_UPDATE_TIME INTEGER DEFAULT 0
+                $COLUMN_UPDATE_TIME INTEGER DEFAULT 0,
+                $COLUMN_IS_SYNC INTEGER DEFAULT 0,
+                $COLUMN_DELETE_FLAG INTEGER DEFAULT 0
             )
         """
 
@@ -95,7 +102,9 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
                 $COLUMN_BEFORE_AFTER_MEAL INTEGER DEFAULT 0,
                 $COLUMN_MEDICINE_NOTES TEXT,
                 $COLUMN_CREATE_TIME INTEGER DEFAULT 0,
-                $COLUMN_UPDATE_TIME INTEGER DEFAULT 0
+                $COLUMN_UPDATE_TIME INTEGER DEFAULT 0,
+                $COLUMN_IS_SYNC INTEGER DEFAULT 0,
+                $COLUMN_DELETE_FLAG INTEGER DEFAULT 0
             )
         """
     }
@@ -110,6 +119,13 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         if (oldVersion < 2) {
             // 版本1升级到版本2，添加图片路径字段
             db?.execSQL("ALTER TABLE $TABLE_HEALTH_RECORD ADD COLUMN $COLUMN_IMAGE_PATHS TEXT DEFAULT ''")
+        }
+        if (oldVersion < 3) {
+            // 版本2升级到版本3，添加同步相关字段
+            db?.execSQL("ALTER TABLE $TABLE_HEALTH_RECORD ADD COLUMN $COLUMN_IS_SYNC INTEGER DEFAULT 0")
+            db?.execSQL("ALTER TABLE $TABLE_HEALTH_RECORD ADD COLUMN $COLUMN_DELETE_FLAG INTEGER DEFAULT 0")
+            db?.execSQL("ALTER TABLE $TABLE_MEDICINE_REMINDER ADD COLUMN $COLUMN_IS_SYNC INTEGER DEFAULT 0")
+            db?.execSQL("ALTER TABLE $TABLE_MEDICINE_REMINDER ADD COLUMN $COLUMN_DELETE_FLAG INTEGER DEFAULT 0")
         }
     }
 
@@ -136,6 +152,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             put(COLUMN_IMAGE_PATHS, record.imagePaths)
             put(COLUMN_CREATE_TIME, record.createTime)
             put(COLUMN_UPDATE_TIME, record.updateTime)
+            put(COLUMN_IS_SYNC, record.isSync)
+            put(COLUMN_DELETE_FLAG, record.deleteFlag)
         }
         return db.insert(TABLE_HEALTH_RECORD, null, values)
     }
@@ -195,6 +213,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             put(COLUMN_NOTES, record.notes)
             put(COLUMN_IMAGE_PATHS, record.imagePaths)
             put(COLUMN_UPDATE_TIME, System.currentTimeMillis())
+            put(COLUMN_IS_SYNC, 0) // 修改后标记为未同步
         }
         return db.update(
             TABLE_HEALTH_RECORD,
@@ -205,9 +224,9 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
     }
 
     /**
-     * 删除健康记录
+     * 删除健康记录（逻辑删除）
      * @param id 记录ID
-     * @return 删除的行数
+     * @return 更新的行数
      */
     fun deleteHealthRecord(id: Long): Int {
         // 先获取记录，删除对应的图片文件
@@ -229,10 +248,16 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             }
         }
 
-        // 删除数据库记录
+        // 逻辑删除，标记为已删除，未同步
         val db = writableDatabase
-        return db.delete(
+        val values = ContentValues().apply {
+            put(COLUMN_DELETE_FLAG, 1)
+            put(COLUMN_IS_SYNC, 0)
+            put(COLUMN_UPDATE_TIME, System.currentTimeMillis())
+        }
+        return db.update(
             TABLE_HEALTH_RECORD,
+            values,
             "$COLUMN_ID = ?",
             arrayOf(id.toString())
         )
@@ -298,7 +323,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         val cursor = db.query(
             TABLE_HEALTH_RECORD,
             null,
-            null,
+            "$COLUMN_DELETE_FLAG = 0",
             null,
             null,
             null,
@@ -322,7 +347,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         val cursor = db.query(
             TABLE_HEALTH_RECORD,
             null,
-            "$COLUMN_CREATE_TIME >= ?",
+            "$COLUMN_CREATE_TIME >= ? AND $COLUMN_DELETE_FLAG = 0",
             arrayOf(cutoffTime.toString()),
             null,
             null,
@@ -347,7 +372,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         val cursor = db.query(
             TABLE_HEALTH_RECORD,
             null,
-            "$COLUMN_RECORD_DATE BETWEEN ? AND ?",
+            "$COLUMN_RECORD_DATE BETWEEN ? AND ? AND $COLUMN_DELETE_FLAG = 0",
             arrayOf(startDate, endDate),
             null,
             null,
@@ -369,7 +394,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         val cursor = db.query(
             TABLE_HEALTH_RECORD,
             null,
-            null,
+            "$COLUMN_DELETE_FLAG = 0",
             null,
             null,
             null,
@@ -411,6 +436,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             put(COLUMN_MEDICINE_NOTES, reminder.notes)
             put(COLUMN_CREATE_TIME, reminder.createTime)
             put(COLUMN_UPDATE_TIME, reminder.updateTime)
+            put(COLUMN_IS_SYNC, reminder.isSync)
+            put(COLUMN_DELETE_FLAG, reminder.deleteFlag)
         }
         return db.insert(TABLE_MEDICINE_REMINDER, null, values)
     }
@@ -438,6 +465,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             put(COLUMN_BEFORE_AFTER_MEAL, reminder.beforeAfterMeal)
             put(COLUMN_MEDICINE_NOTES, reminder.notes)
             put(COLUMN_UPDATE_TIME, System.currentTimeMillis())
+            put(COLUMN_IS_SYNC, 0) // 修改后标记为未同步
         }
         return db.update(
             TABLE_MEDICINE_REMINDER,
@@ -448,14 +476,20 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
     }
 
     /**
-     * 删除用药提醒
+     * 删除用药提醒（逻辑删除）
      * @param id 提醒ID
-     * @return 删除的行数
+     * @return 更新的行数
      */
     fun deleteMedicineReminder(id: Long): Int {
         val db = writableDatabase
-        return db.delete(
+        val values = ContentValues().apply {
+            put(COLUMN_DELETE_FLAG, 1)
+            put(COLUMN_IS_SYNC, 0)
+            put(COLUMN_UPDATE_TIME, System.currentTimeMillis())
+        }
+        return db.update(
             TABLE_MEDICINE_REMINDER,
+            values,
             "$COLUMN_ID = ?",
             arrayOf(id.toString())
         )
@@ -496,7 +530,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         val cursor = db.query(
             TABLE_MEDICINE_REMINDER,
             null,
-            null,
+            "$COLUMN_DELETE_FLAG = 0",
             null,
             null,
             null,
@@ -519,7 +553,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         val cursor = db.query(
             TABLE_MEDICINE_REMINDER,
             null,
-            "$COLUMN_IS_ENABLED = ?",
+            "$COLUMN_IS_ENABLED = ? AND $COLUMN_DELETE_FLAG = 0",
             arrayOf("1"),
             null,
             null,
@@ -543,6 +577,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         val values = ContentValues().apply {
             put(COLUMN_IS_ENABLED, if (isEnabled) 1 else 0)
             put(COLUMN_UPDATE_TIME, System.currentTimeMillis())
+            put(COLUMN_IS_SYNC, 0) // 修改后标记为未同步
         }
         return db.update(
             TABLE_MEDICINE_REMINDER,
@@ -572,7 +607,9 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             notes = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NOTES)) ?: "",
             imagePaths = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_IMAGE_PATHS)) ?: "",
             createTime = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_CREATE_TIME)),
-            updateTime = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_UPDATE_TIME))
+            updateTime = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_UPDATE_TIME)),
+            isSync = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_IS_SYNC)),
+            deleteFlag = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_DELETE_FLAG))
         )
     }
 
@@ -597,7 +634,9 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             beforeAfterMeal = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_BEFORE_AFTER_MEAL)),
             notes = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MEDICINE_NOTES)) ?: "",
             createTime = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_CREATE_TIME)),
-            updateTime = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_UPDATE_TIME))
+            updateTime = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_UPDATE_TIME)),
+            isSync = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_IS_SYNC)),
+            deleteFlag = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_DELETE_FLAG))
         )
     }
 
@@ -614,7 +653,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         // 查询平均体重
         val weightCursor = db.rawQuery(
             "SELECT AVG($COLUMN_WEIGHT) as avg_weight, MIN($COLUMN_WEIGHT) as min_weight, MAX($COLUMN_WEIGHT) as max_weight " +
-            "FROM $TABLE_HEALTH_RECORD WHERE $COLUMN_RECORD_DATE BETWEEN ? AND ? AND $COLUMN_WEIGHT > 0",
+            "FROM $TABLE_HEALTH_RECORD WHERE $COLUMN_RECORD_DATE BETWEEN ? AND ? AND $COLUMN_WEIGHT > 0 AND $COLUMN_DELETE_FLAG = 0",
             arrayOf(startDate, endDate)
         )
         if (weightCursor.moveToFirst()) {
@@ -627,7 +666,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         // 查询平均血压
         val pressureCursor = db.rawQuery(
             "SELECT AVG($COLUMN_SYSTOLIC_PRESSURE) as avg_sys, AVG($COLUMN_DIASTOLIC_PRESSURE) as avg_dia " +
-            "FROM $TABLE_HEALTH_RECORD WHERE $COLUMN_RECORD_DATE BETWEEN ? AND ? AND $COLUMN_SYSTOLIC_PRESSURE > 0",
+            "FROM $TABLE_HEALTH_RECORD WHERE $COLUMN_RECORD_DATE BETWEEN ? AND ? AND $COLUMN_SYSTOLIC_PRESSURE > 0 AND $COLUMN_DELETE_FLAG = 0",
             arrayOf(startDate, endDate)
         )
         if (pressureCursor.moveToFirst()) {
@@ -639,7 +678,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         // 查询平均血糖
         val sugarCursor = db.rawQuery(
             "SELECT AVG($COLUMN_BLOOD_SUGAR) as avg_sugar " +
-            "FROM $TABLE_HEALTH_RECORD WHERE $COLUMN_RECORD_DATE BETWEEN ? AND ? AND $COLUMN_BLOOD_SUGAR > 0",
+            "FROM $TABLE_HEALTH_RECORD WHERE $COLUMN_RECORD_DATE BETWEEN ? AND ? AND $COLUMN_BLOOD_SUGAR > 0 AND $COLUMN_DELETE_FLAG = 0",
             arrayOf(startDate, endDate)
         )
         if (sugarCursor.moveToFirst()) {
@@ -658,7 +697,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
     fun getMedicineReminderCount(): Int {
         val db = readableDatabase
         val cursor = db.rawQuery(
-            "SELECT COUNT(*) FROM $TABLE_MEDICINE_REMINDER",
+            "SELECT COUNT(*) FROM $TABLE_MEDICINE_REMINDER WHERE $COLUMN_DELETE_FLAG = 0",
             null
         )
         val count = if (cursor.moveToFirst()) cursor.getInt(0) else 0
@@ -673,11 +712,262 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
     fun getEnabledReminderCount(): Int {
         val db = readableDatabase
         val cursor = db.rawQuery(
-            "SELECT COUNT(*) FROM $TABLE_MEDICINE_REMINDER WHERE $COLUMN_IS_ENABLED = 1",
+            "SELECT COUNT(*) FROM $TABLE_MEDICINE_REMINDER WHERE $COLUMN_IS_ENABLED = 1 AND $COLUMN_DELETE_FLAG = 0",
             null
         )
         val count = if (cursor.moveToFirst()) cursor.getInt(0) else 0
         cursor.close()
         return count
+    }
+
+    // ==================== 同步相关方法 ====================
+
+    /**
+     * 获取所有未同步的健康记录（包括已删除的）
+     * @return 未同步的健康记录列表
+     */
+    fun getUnsyncedHealthRecords(): List<HealthRecord> {
+        val records = mutableListOf<HealthRecord>()
+        val db = readableDatabase
+        val cursor = db.query(
+            TABLE_HEALTH_RECORD,
+            null,
+            "$COLUMN_IS_SYNC = 0",
+            null,
+            null,
+            null,
+            "$COLUMN_UPDATE_TIME ASC"
+        )
+        while (cursor.moveToNext()) {
+            records.add(cursorToHealthRecord(cursor))
+        }
+        cursor.close()
+        return records
+    }
+
+    /**
+     * 获取所有未同步的用药提醒（包括已删除的）
+     * @return 未同步的用药提醒列表
+     */
+    fun getUnsyncedMedicineReminders(): List<MedicineReminder> {
+        val reminders = mutableListOf<MedicineReminder>()
+        val db = readableDatabase
+        val cursor = db.query(
+            TABLE_MEDICINE_REMINDER,
+            null,
+            "$COLUMN_IS_SYNC = 0",
+            null,
+            null,
+            null,
+            "$COLUMN_UPDATE_TIME ASC"
+        )
+        while (cursor.moveToNext()) {
+            reminders.add(cursorToMedicineReminder(cursor))
+        }
+        cursor.close()
+        return reminders
+    }
+
+    /**
+     * 批量标记健康记录为已同步
+     * @param recordIds 记录ID列表
+     * @return 更新的行数
+     */
+    fun markHealthRecordsSynced(recordIds: List<Long>): Int {
+        if (recordIds.isEmpty()) return 0
+        val db = writableDatabase
+        val placeholders = recordIds.joinToString(",") { "?" }
+        val args = recordIds.map { it.toString() }.toTypedArray()
+        val values = ContentValues().apply {
+            put(COLUMN_IS_SYNC, 1)
+        }
+        return db.update(
+            TABLE_HEALTH_RECORD,
+            values,
+            "$COLUMN_ID IN ($placeholders)",
+            args
+        )
+    }
+
+    /**
+     * 批量标记用药提醒为已同步
+     * @param reminderIds 提醒ID列表
+     * @return 更新的行数
+     */
+    fun markMedicineRemindersSynced(reminderIds: List<Long>): Int {
+        if (reminderIds.isEmpty()) return 0
+        val db = writableDatabase
+        val placeholders = reminderIds.joinToString(",") { "?" }
+        val args = reminderIds.map { it.toString() }.toTypedArray()
+        val values = ContentValues().apply {
+            put(COLUMN_IS_SYNC, 1)
+        }
+        return db.update(
+            TABLE_MEDICINE_REMINDER,
+            values,
+            "$COLUMN_ID IN ($placeholders)",
+            args
+        )
+    }
+
+    /**
+     * 同步服务器拉取的健康记录到本地
+     * @param records 服务器返回的健康记录列表
+     * @return 同步成功的数量
+     */
+    fun syncHealthRecordsFromServer(records: List<HealthRecord>): Int {
+        if (records.isEmpty()) return 0
+        val db = writableDatabase
+        var successCount = 0
+        db.beginTransaction()
+        try {
+            for (record in records) {
+                // 检查本地是否已有该记录（服务器返回的ID是服务器的ID？或者需要用record_date作为唯一键？
+                // 这里假设用record_date作为唯一键，因为同一日期只能有一条健康记录
+                val existingRecord = getHealthRecordByDate(record.recordDate)
+                if (existingRecord != null) {
+                    // 比较更新时间，服务器的更新时间晚才更新
+                    if (record.updateTime > existingRecord.updateTime) {
+                        // 如果服务器标记为删除，本地也删除
+                        if (record.deleteFlag == 1) {
+                            deleteHealthRecord(existingRecord.id)
+                        } else {
+                            // 更新记录，保留本地ID，其他字段用服务器的
+                            val values = ContentValues().apply {
+                                put(COLUMN_WEIGHT, record.weight)
+                                put(COLUMN_SYSTOLIC_PRESSURE, record.systolicPressure)
+                                put(COLUMN_DIASTOLIC_PRESSURE, record.diastolicPressure)
+                                put(COLUMN_HEART_RATE, record.heartRate)
+                                put(COLUMN_BLOOD_SUGAR, record.bloodSugar)
+                                put(COLUMN_SLEEP_DURATION, record.sleepDuration)
+                                put(COLUMN_WATER_INTAKE, record.waterIntake)
+                                put(COLUMN_STEPS, record.steps)
+                                put(COLUMN_NOTES, record.notes)
+                                put(COLUMN_IMAGE_PATHS, record.imagePaths)
+                                put(COLUMN_UPDATE_TIME, record.updateTime)
+                                put(COLUMN_IS_SYNC, 1) // 从服务器同步的，标记为已同步
+                                put(COLUMN_DELETE_FLAG, record.deleteFlag)
+                            }
+                            db.update(
+                                TABLE_HEALTH_RECORD,
+                                values,
+                                "$COLUMN_ID = ?",
+                                arrayOf(existingRecord.id.toString())
+                            )
+                        }
+                        successCount++
+                    }
+                } else {
+                    // 本地没有，插入新记录
+                    if (record.deleteFlag != 1) { // 未删除的才插入
+                        val values = ContentValues().apply {
+                            put(COLUMN_RECORD_DATE, record.recordDate)
+                            put(COLUMN_WEIGHT, record.weight)
+                            put(COLUMN_SYSTOLIC_PRESSURE, record.systolicPressure)
+                            put(COLUMN_DIASTOLIC_PRESSURE, record.diastolicPressure)
+                            put(COLUMN_HEART_RATE, record.heartRate)
+                            put(COLUMN_BLOOD_SUGAR, record.bloodSugar)
+                            put(COLUMN_SLEEP_DURATION, record.sleepDuration)
+                            put(COLUMN_WATER_INTAKE, record.waterIntake)
+                            put(COLUMN_STEPS, record.steps)
+                            put(COLUMN_NOTES, record.notes)
+                            put(COLUMN_IMAGE_PATHS, record.imagePaths)
+                            put(COLUMN_CREATE_TIME, record.createTime)
+                            put(COLUMN_UPDATE_TIME, record.updateTime)
+                            put(COLUMN_IS_SYNC, 1) // 从服务器同步的，标记为已同步
+                            put(COLUMN_DELETE_FLAG, record.deleteFlag)
+                        }
+                        db.insert(TABLE_HEALTH_RECORD, null, values)
+                        successCount++
+                    }
+                }
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        return successCount
+    }
+
+    /**
+     * 同步服务器拉取的用药提醒到本地
+     * @param reminders 服务器返回的用药提醒列表
+     * @return 同步成功的数量
+     */
+    fun syncMedicineRemindersFromServer(reminders: List<MedicineReminder>): Int {
+        if (reminders.isEmpty()) return 0
+        val db = writableDatabase
+        var successCount = 0
+        db.beginTransaction()
+        try {
+            for (reminder in reminders) {
+                // 用药提醒没有唯一的业务键，所以用ID匹配？或者用medicineName + remindTime1？
+                // 这里简化处理，直接比较更新时间，如果服务器的更新时间晚，就更新或者插入
+                val existingReminder = getMedicineReminderById(reminder.id)
+                if (existingReminder != null) {
+                    if (reminder.updateTime > existingReminder.updateTime) {
+                        if (reminder.deleteFlag == 1) {
+                            deleteMedicineReminder(existingReminder.id)
+                        } else {
+                            val values = ContentValues().apply {
+                                put(COLUMN_MEDICINE_NAME, reminder.medicineName)
+                                put(COLUMN_DOSAGE, reminder.dosage)
+                                put(COLUMN_UNIT, reminder.unit)
+                                put(COLUMN_FREQUENCY, reminder.frequency)
+                                put(COLUMN_REMIND_TIME1, reminder.remindTime1)
+                                put(COLUMN_REMIND_TIME2, reminder.remindTime2)
+                                put(COLUMN_REMIND_TIME3, reminder.remindTime3)
+                                put(COLUMN_REMIND_TIME4, reminder.remindTime4)
+                                put(COLUMN_REMIND_TIME5, reminder.remindTime5)
+                                put(COLUMN_IS_ENABLED, if (reminder.isEnabled) 1 else 0)
+                                put(COLUMN_START_DATE, reminder.startDate)
+                                put(COLUMN_END_DATE, reminder.endDate)
+                                put(COLUMN_BEFORE_AFTER_MEAL, reminder.beforeAfterMeal)
+                                put(COLUMN_MEDICINE_NOTES, reminder.notes)
+                                put(COLUMN_UPDATE_TIME, reminder.updateTime)
+                                put(COLUMN_IS_SYNC, 1)
+                                put(COLUMN_DELETE_FLAG, reminder.deleteFlag)
+                            }
+                            db.update(
+                                TABLE_MEDICINE_REMINDER,
+                                values,
+                                "$COLUMN_ID = ?",
+                                arrayOf(existingReminder.id.toString())
+                            )
+                        }
+                        successCount++
+                    }
+                } else {
+                    if (reminder.deleteFlag != 1) {
+                        val values = ContentValues().apply {
+                            put(COLUMN_MEDICINE_NAME, reminder.medicineName)
+                            put(COLUMN_DOSAGE, reminder.dosage)
+                            put(COLUMN_UNIT, reminder.unit)
+                            put(COLUMN_FREQUENCY, reminder.frequency)
+                            put(COLUMN_REMIND_TIME1, reminder.remindTime1)
+                            put(COLUMN_REMIND_TIME2, reminder.remindTime2)
+                            put(COLUMN_REMIND_TIME3, reminder.remindTime3)
+                            put(COLUMN_REMIND_TIME4, reminder.remindTime4)
+                            put(COLUMN_REMIND_TIME5, reminder.remindTime5)
+                            put(COLUMN_IS_ENABLED, if (reminder.isEnabled) 1 else 0)
+                            put(COLUMN_START_DATE, reminder.startDate)
+                            put(COLUMN_END_DATE, reminder.endDate)
+                            put(COLUMN_BEFORE_AFTER_MEAL, reminder.beforeAfterMeal)
+                            put(COLUMN_MEDICINE_NOTES, reminder.notes)
+                            put(COLUMN_CREATE_TIME, reminder.createTime)
+                            put(COLUMN_UPDATE_TIME, reminder.updateTime)
+                            put(COLUMN_IS_SYNC, 1)
+                            put(COLUMN_DELETE_FLAG, reminder.deleteFlag)
+                        }
+                        db.insert(TABLE_MEDICINE_REMINDER, null, values)
+                        successCount++
+                    }
+                }
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        return successCount
     }
 }

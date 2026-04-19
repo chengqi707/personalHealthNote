@@ -1,6 +1,7 @@
 package com.chengqi.personalhealthnote.service
 
 import android.util.Log
+import com.chengqi.personalhealthnote.BuildConfig
 import com.chengqi.personalhealthnote.entity.HealthRecord
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
@@ -16,10 +17,10 @@ import java.util.concurrent.TimeUnit
  */
 class AiHealthService {
 
-    // 配置你的AI模型API信息，这里用豆包API为例，可以换成任意大模型API
-    private val apiKey = "cd94a517-148e-4547-a9d5-4916a02c3706"
-    private val apiUrl = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
-    private val model = "ep-20260418233739-cp4jm" // 先用稳定的3.5模型，你可以替换为自己的接入点ID
+    // 配置你的AI模型API信息，从BuildConfig读取，避免硬编码敏感信息
+    private val apiKey = BuildConfig.DOUBAO_API_KEY
+    private val apiUrl = BuildConfig.DOUBAO_API_URL
+    private val model = BuildConfig.DOUBAO_MODEL
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)  // 连接超时30秒

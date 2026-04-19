@@ -18,7 +18,9 @@ data class HealthRecord(
     val notes: String,           // 备注
     val imagePaths: String = "", // 就诊/检查单据图片路径，JSON数组格式
     val createTime: Long = System.currentTimeMillis(),
-    val updateTime: Long = System.currentTimeMillis()
+    val updateTime: Long = System.currentTimeMillis(),
+    val isSync: Int = 0,         // 是否已同步：0未同步 1已同步
+    val deleteFlag: Int = 0      // 是否已删除：0未删除 1已删除
 ) {
     /**
      * 获取血压显示文本

@@ -3,7 +3,11 @@ package com.chengqi.personalhealthnote.activity
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.view.Menu
+import android.view.MenuItem
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import com.chengqi.personalhealthnote.R
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.chengqi.personalhealthnote.adapter.HealthRecordAdapter
@@ -12,6 +16,8 @@ import com.chengqi.personalhealthnote.database.DatabaseHelper
 import com.chengqi.personalhealthnote.databinding.ActivityMainBinding
 import com.chengqi.personalhealthnote.entity.HealthRecord
 import com.chengqi.personalhealthnote.entity.MedicineReminder
+import com.chengqi.personalhealthnote.network.ApiService
+import com.chengqi.personalhealthnote.utils.TokenManager
 import com.google.android.material.tabs.TabLayout
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -35,6 +41,7 @@ class MainActivity : AppCompatActivity() {
         const val REQUEST_EDIT_HEALTH_RECORD = 1002
         const val REQUEST_ADD_MEDICINE = 1003
         const val REQUEST_EDIT_MEDICINE = 1004
+        const val REQUEST_LOGIN = 1005
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -289,6 +296,99 @@ class MainActivity : AppCompatActivity() {
         loadData()
     }
 
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.main_menu, menu)
+        return true
+    }
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_sync -> {
+                syncData()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+    /**
+     * 同步数据
+     */
+    private fun syncData() {
+        if (!TokenManager.isLogin(this)) {
+            startActivityForResult(Intent(this, LoginActivity::class.java), REQUEST_LOGIN)
+            return
+        }
+        Toast.makeText(this, "开始同步...", Toast.LENGTH_SHORT).show()
+        val context = this
+        Thread {
+            try {
+                val lastSyncTime = TokenManager.getLastSyncTime(context)
+                var syncSuccess = true
+                // 1. 拉取健康记录
+                ApiService.pullHealthRecords(context, lastSyncTime) { success: Boolean, message: String?, records: List<HealthRecord>? ->
+                    if (success && records != null) {
+                        dbHelper.syncHealthRecordsFromServer(records)
+                    } else {
+                        syncSuccess = false
+                        runOnUiThread {
+                            Toast.makeText(context, "拉取健康记录失败：$message", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+                // 2. 拉取用药提醒
+                ApiService.pullMedicineReminders(context, lastSyncTime) { success: Boolean, message: String?, reminders: List<MedicineReminder>? ->
+                    if (success && reminders != null) {
+                        dbHelper.syncMedicineRemindersFromServer(reminders)
+                    } else {
+                        syncSuccess = false
+                        runOnUiThread {
+                            Toast.makeText(context, "拉取用药提醒失败：$message", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+                // 3. 上传健康记录
+                val unsyncedHealth = dbHelper.getUnsyncedHealthRecords()
+                if (unsyncedHealth.isNotEmpty()) {
+                    ApiService.pushHealthRecords(context, unsyncedHealth) { success: Boolean, message: String?, count: Int? ->
+                        if (success && count != null) {
+                            val ids = unsyncedHealth.map { it.id }
+                            dbHelper.markHealthRecordsSynced(ids)
+                        } else {
+                            syncSuccess = false
+                            runOnUiThread {
+                                Toast.makeText(context, "上传健康记录失败：$message", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                }
+                // 4. 上传用药提醒
+                val unsyncedMedicine = dbHelper.getUnsyncedMedicineReminders()
+                if (unsyncedMedicine.isNotEmpty()) {
+                    ApiService.pushMedicineReminders(context, unsyncedMedicine) { success: Boolean, message: String?, count: Int? ->
+                        if (success && count != null) {
+                            val ids = unsyncedMedicine.map { it.id }
+                            dbHelper.markMedicineRemindersSynced(ids)
+                        } else {
+                            syncSuccess = false
+                            runOnUiThread {
+                                Toast.makeText(context, "上传用药提醒失败：$message", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                }
+                if (syncSuccess) {
+                    TokenManager.updateLastSyncTime(context)
+                    runOnUiThread {
+                        loadData()
+                        Toast.makeText(context, "同步成功", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    Toast.makeText(context, "同步失败：${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }.start()
+    }
     override fun onDestroy() {
         super.onDestroy()
         dbHelper.close()
