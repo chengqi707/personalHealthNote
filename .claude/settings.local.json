@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(del *)",
+      "Bash(mv /c/chengqi/Android/AndroidProject/personalHealthNote/app/src/main/java/com/example/healthnote/activity/*.kt /c/chengqi/Android/AndroidProject/personalHealthNote/app/src/main/java/com/chengqi/personalhealthnote/activity/)",
+      "Bash(mv /c/chengqi/Android/AndroidProject/personalHealthNote/app/src/main/java/com/example/healthnote/adapter/*.kt /c/chengqi/Android/AndroidProject/personalHealthNote/app/src/main/java/com/chengqi/personalhealthnote/adapter/)",
+      "Bash(mv /c/chengqi/Android/AndroidProject/personalHealthNote/app/src/main/java/com/example/healthnote/database/*.kt /c/chengqi/Android/AndroidProject/personalHealthNote/app/src/main/java/com/chengqi/personalhealthnote/database/)",
+      "Bash(mv /c/chengqi/Android/AndroidProject/personalHealthNote/app/src/main/java/com/example/healthnote/entity/*.kt /c/chengqi/Android/AndroidProject/personalHealthNote/app/src/main/java/com/chengqi/personalhealthnote/entity/)"
+    ]
+  }
+}
