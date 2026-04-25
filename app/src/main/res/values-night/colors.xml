@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 深色模式颜色配置 -->
+    <color name="black">#FFFFFFFF</color>
+    <color name="white">#FF121212</color>
+
+    <!-- 主题色（和浅色模式保持一致） -->
+    <color name="primary">#FF2196F3</color>
+    <color name="primaryVariant">#FF1976D2</color>
+    <color name="onPrimary">#FFFFFFFF</color>
+
+    <!-- 背景色 -->
+    <color name="background">#FF121212</color>
+    <color name="onBackground">#FFFFFFFF</color>
+
+    <!-- 表面色（卡片、输入框等） -->
+    <color name="surface">#FF1E1E1E</color>
+    <color name="onSurface">#FFFFFFFF</color>
+
+    <!-- 文字颜色 -->
+    <color name="textPrimary">#FFFFFFFF</color>
+    <color name="textSecondary">#FFB0B0B0</color>
+    <color name="textHint">#FF808080</color>
+
+    <!-- 分割线颜色 -->
+    <color name="divider">#FF333333</color>
+
+    <!-- 卡片圆角背景 -->
+    <color name="cardBackground">#FF1E1E1E</color>
+</resources>

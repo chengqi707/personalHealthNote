@@ -4,7 +4,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/white"
+    android:background="@color/background"
+    android:fitsSystemWindows="true"
     android:orientation="vertical">
 
     <!-- 顶部工具栏 -->
@@ -116,13 +117,14 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
+                        app:hintEnabled="false"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/etWeight"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:hint="体重"
+                            android:hint="请输入体重"
                             android:inputType="numberDecimal"
                             android:maxLines="1" />
 
@@ -169,13 +171,14 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
+                    app:hintEnabled="false"
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etSystolicPressure"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="收缩压（高压）"
+                        android:hint="请输入收缩压"
                         android:inputType="number"
                         android:maxLines="1" />
 
@@ -194,13 +197,14 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
+                    app:hintEnabled="false"
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etDiastolicPressure"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="舒张压（低压）"
+                        android:hint="请输入舒张压"
                         android:inputType="number"
                         android:maxLines="1" />
 
@@ -243,13 +247,14 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
+                        app:hintEnabled="false"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/etHeartRate"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:hint="心率"
+                            android:hint="请输入心率"
                             android:inputType="number"
                             android:maxLines="1" />
 
@@ -285,13 +290,14 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
+                        app:hintEnabled="false"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/etBloodSugar"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:hint="血糖"
+                            android:hint="请输入血糖"
                             android:inputType="numberDecimal"
                             android:maxLines="1" />
 
@@ -336,13 +342,14 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
+                        app:hintEnabled="false"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/etSleepDuration"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:hint="睡眠"
+                            android:hint="请输入睡眠时长"
                             android:inputType="numberDecimal"
                             android:maxLines="1" />
 
@@ -378,13 +385,14 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
+                        app:hintEnabled="false"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/etWaterIntake"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:hint="饮水"
+                            android:hint="请输入饮水量"
                             android:inputType="number"
                             android:maxLines="1" />
 
@@ -420,13 +428,14 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
+                        app:hintEnabled="false"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/etSteps"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:hint="步数"
+                            android:hint="请输入步数"
                             android:inputType="number"
                             android:maxLines="1" />
 
@@ -458,6 +467,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
+                app:hintEnabled="false"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -465,7 +475,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="top"
-                    android:hint="添加备注信息..."
+                    android:hint="请输入备注信息..."
                     android:inputType="textMultiLine"
                     android:maxLines="4"
                     android:minLines="3" />

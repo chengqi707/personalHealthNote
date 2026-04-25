@@ -10,6 +10,7 @@
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:fitsSystemWindows="true"
         android:theme="@style/Theme.PersonalHealthNote.AppBarOverlay">
 
         <!-- Toolbar -->
@@ -65,7 +66,7 @@
                 android:layout_gravity="center"
                 android:text="暂无数据"
                 android:textSize="16sp"
-                android:textColor="@android:color/darker_gray"
+                android:textColor="@color/textSecondary"
                 android:visibility="gone" />
 
         </FrameLayout>

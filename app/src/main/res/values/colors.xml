@@ -2,4 +2,28 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- 主题色 -->
+    <color name="primary">#FF2196F3</color>
+    <color name="primaryVariant">#FF1976D2</color>
+    <color name="onPrimary">#FFFFFFFF</color>
+
+    <!-- 背景色 -->
+    <color name="background">#FFF8F9FA</color>
+    <color name="onBackground">#FF000000</color>
+
+    <!-- 表面色（卡片、输入框等） -->
+    <color name="surface">#FFFFFFFF</color>
+    <color name="onSurface">#FF000000</color>
+
+    <!-- 文字颜色 -->
+    <color name="textPrimary">#FF000000</color>
+    <color name="textSecondary">#FF666666</color>
+    <color name="textHint">#FF999999</color>
+
+    <!-- 分割线颜色 -->
+    <color name="divider">#FFE0E0E0</color>
+
+    <!-- 卡片圆角背景 -->
+    <color name="cardBackground">#FFFFFFFF</color>
 </resources>
