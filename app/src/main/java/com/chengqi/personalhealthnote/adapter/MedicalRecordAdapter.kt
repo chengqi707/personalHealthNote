@@ -3,6 +3,7 @@ package com.chengqi.personalhealthnote.adapter
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.chengqi.personalhealthnote.R
@@ -24,6 +25,7 @@ class MedicalRecordAdapter(
         val tvSymptoms: TextView = itemView.findViewById(R.id.tvSymptoms)
         val tvDiagnosisResult: TextView = itemView.findViewById(R.id.tvDiagnosisResult)
         val tvDoctor: TextView = itemView.findViewById(R.id.tvDoctor)
+        val ivHasImages: ImageView = itemView.findViewById(R.id.ivHasImages)
 
         init {
             itemView.setOnClickListener {
@@ -57,6 +59,7 @@ class MedicalRecordAdapter(
         holder.tvDiagnosisResult.text = record.diagnosisResult
         holder.tvDoctor.text = if (record.doctor.isNotEmpty()) record.doctor else ""
         holder.tvDoctor.visibility = if (record.doctor.isNotEmpty()) View.VISIBLE else View.GONE
+        holder.ivHasImages.visibility = if (record.imagePaths.isNotEmpty()) View.VISIBLE else View.GONE
     }
 
     override fun getItemCount(): Int = records.size

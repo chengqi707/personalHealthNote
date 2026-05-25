@@ -13,12 +13,15 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.chengqi.personalhealthnote.R
+import com.chengqi.personalhealthnote.adapter.ImageAdapter
 import com.chengqi.personalhealthnote.database.DatabaseHelper
 import com.chengqi.personalhealthnote.databinding.ActivityMedicalRecordDetailBinding
 import com.chengqi.personalhealthnote.entity.MedicalRecord
 import com.chengqi.personalhealthnote.service.AiMedicalAssessmentService
 import com.chengqi.personalhealthnote.utils.DialogUtils
 import com.chengqi.personalhealthnote.utils.ToastUtils
+import androidx.recyclerview.widget.GridLayoutManager
+import org.json.JSONArray
 import org.json.JSONObject
 
 /**
@@ -32,6 +35,8 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
     private var recordId: Long = 0
     private lateinit var currentRecord: MedicalRecord
     private lateinit var aiAssessmentService: AiMedicalAssessmentService
+    private val imagePaths = mutableListOf<String>()
+    private lateinit var imageAdapter: ImageAdapter
 
     companion object {
         const val REQUEST_EDIT_RECORD = 2001
@@ -61,6 +66,18 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.title = "就医记录详情"
+
+        imageAdapter = ImageAdapter(
+            imagePaths = imagePaths,
+            onImageClick = { position ->
+                ToastUtils.show(this, "查看图片 ${position + 1}")
+            },
+            onImageDelete = {
+                ToastUtils.show(this, "请进入编辑模式修改图片")
+            }
+        )
+        binding.rvImages.adapter = imageAdapter
+        binding.rvImages.layoutManager = GridLayoutManager(this, 3)
     }
 
     private fun setupListeners() {
@@ -103,6 +120,24 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
         binding.tvDiagnosisResult.text = record.diagnosisResult
         binding.tvCheckItems.text = record.checkItems.ifEmpty { "未填写" }
         binding.tvMedicines.text = record.medicines.ifEmpty { "未填写" }
+
+        // 加载图片
+        imagePaths.clear()
+        if (record.imagePaths.isNotEmpty()) {
+            try {
+                val jsonArray = JSONArray(record.imagePaths)
+                for (i in 0 until jsonArray.length()) {
+                    imagePaths.add(jsonArray.getString(i))
+                }
+                imageAdapter.notifyDataSetChanged()
+                binding.layoutImages.visibility = View.VISIBLE
+            } catch (e: Exception) {
+                e.printStackTrace()
+                binding.layoutImages.visibility = View.GONE
+            }
+        } else {
+            binding.layoutImages.visibility = View.GONE
+        }
 
         // 评估按钮状态
         binding.btnHealthAssessment.isEnabled = record.hasValidInfo()

@@ -220,6 +220,34 @@
                 android:gravity="top|start"
                 android:lineSpacingMultiplier="1.2" />
 
+            <!-- 病历卡照片 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="病历卡照片"
+                android:textColor="#333333"
+                android:textSize="14sp" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvImages"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                app:layoutManager="androidx.recyclerview.widget.GridLayoutManager"
+                app:spanCount="3" />
+
+            <Button
+                android:id="@+id/btnAddImage"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="16dp"
+                android:text="添加病历卡照片"
+                android:textSize="14sp"
+                android:textColor="#2196F3"
+                android:background="@drawable/bg_button_assessment"
+                android:stateListAnimator="@null" />
+
         </LinearLayout>
 
     </ScrollView>

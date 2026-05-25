@@ -13,6 +13,7 @@ data class MedicalRecord(
     val diagnosisResult: String,      // 就诊结果（必填）
     val checkItems: String = "",      // 检查项目（非必填）
     val medicines: String = "",       // 药品清单（非必填）
+    val imagePaths: String = "",      // 病历卡/就诊单据图片路径，JSON数组格式
     val createTime: Long = System.currentTimeMillis(),
     val updateTime: Long = System.currentTimeMillis(),
     val healthEvaluation: String? = null,  // 健康状态评估结果（本地缓存）

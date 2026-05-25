@@ -2,31 +2,48 @@ package com.chengqi.personalhealthnote.activity
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.MenuItem
-import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.GridLayoutManager
 import com.chengqi.personalhealthnote.R
+import com.chengqi.personalhealthnote.adapter.ImageAdapter
 import com.chengqi.personalhealthnote.database.DatabaseHelper
 import com.chengqi.personalhealthnote.databinding.ActivityMedicalRecordAddBinding
 import com.chengqi.personalhealthnote.entity.MedicalRecord
+import com.chengqi.personalhealthnote.utils.DialogUtils
 import com.chengqi.personalhealthnote.utils.ToastUtils
+import org.json.JSONArray
+import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
-/**
- * 新增就医记录Activity
- * 按 PRD §4.2 实现
- */
 class MedicalRecordAddActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMedicalRecordAddBinding
     private lateinit var dbHelper: DatabaseHelper
+    private lateinit var imageAdapter: ImageAdapter
     private var selectedMedicalTime: String = ""
     private val calendar = Calendar.getInstance()
     private val dateTimeFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+    private val selectedImages = mutableListOf<String>()
+
+    companion object {
+        private const val REQUEST_PERMISSION = 2001
+        private const val REQUEST_PICK_IMAGE = 2002
+        private const val MAX_IMAGE_COUNT = 9
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,6 +54,7 @@ class MedicalRecordAddActivity : AppCompatActivity() {
 
         initViews()
         setupListeners()
+        initImageRecyclerView()
     }
 
     private fun initViews() {
@@ -45,18 +63,25 @@ class MedicalRecordAddActivity : AppCompatActivity() {
         supportActionBar?.title = "新增就医记录"
     }
 
+    private fun initImageRecyclerView() {
+        imageAdapter = ImageAdapter(
+            imagePaths = selectedImages,
+            onImageClick = { position ->
+                ToastUtils.show(this, "查看图片 ${position + 1}")
+            },
+            onImageDelete = { position ->
+                showDeleteImageConfirm(position)
+            }
+        )
+        binding.rvImages.adapter = imageAdapter
+        binding.rvImages.layoutManager = GridLayoutManager(this, 3)
+    }
+
     private fun setupListeners() {
-        // 就医时间选择
-        binding.tvMedicalTime.setOnClickListener {
-            showDateTimePicker()
-        }
+        binding.tvMedicalTime.setOnClickListener { showDateTimePicker() }
+        binding.btnSubmit.setOnClickListener { submitRecord() }
+        binding.btnAddImage.setOnClickListener { checkPermissionAndPickImage() }
 
-        // 提交按钮
-        binding.btnSubmit.setOnClickListener {
-            submitRecord()
-        }
-
-        // 输入字数限制提示
         setupMaxLengthWatcher(binding.etSymptoms, 500)
         setupMaxLengthWatcher(binding.etDiagnosisResult, 500)
         setupMaxLengthWatcher(binding.etCheckItems, 300)
@@ -78,15 +103,10 @@ class MedicalRecordAddActivity : AppCompatActivity() {
         })
     }
 
-    /**
-     * 显示日期时间选择器
-     */
     private fun showDateTimePicker() {
-        // 先选日期
         val datePickerDialog = DatePickerDialog(
             this,
             { _, year, month, dayOfMonth ->
-                // 再选时间
                 val timePickerDialog = TimePickerDialog(
                     this,
                     { _, hourOfDay, minute ->
@@ -106,16 +126,11 @@ class MedicalRecordAddActivity : AppCompatActivity() {
             calendar.get(Calendar.MONTH),
             calendar.get(Calendar.DAY_OF_MONTH)
         )
-        // 禁止选择未来时间
         datePickerDialog.datePicker.maxDate = System.currentTimeMillis()
         datePickerDialog.show()
     }
 
-    /**
-     * 提交记录
-     */
     private fun submitRecord() {
-        // 校验必填项
         var hasError = false
 
         if (selectedMedicalTime.isEmpty()) {
@@ -158,6 +173,14 @@ class MedicalRecordAddActivity : AppCompatActivity() {
         val medicines = binding.etMedicines.text.toString().trim()
         val currentTime = System.currentTimeMillis()
 
+        val imageJson = if (selectedImages.isNotEmpty()) {
+            val jsonArray = JSONArray()
+            selectedImages.forEach { jsonArray.put(it) }
+            jsonArray.toString()
+        } else {
+            ""
+        }
+
         val record = MedicalRecord(
             medicalTime = selectedMedicalTime,
             hospital = hospital,
@@ -166,6 +189,7 @@ class MedicalRecordAddActivity : AppCompatActivity() {
             diagnosisResult = diagnosisResult,
             checkItems = checkItems,
             medicines = medicines,
+            imagePaths = imageJson,
             createTime = currentTime,
             updateTime = currentTime
         )
@@ -180,12 +204,96 @@ class MedicalRecordAddActivity : AppCompatActivity() {
         }
     }
 
+    private fun checkPermissionAndPickImage() {
+        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            android.Manifest.permission.READ_MEDIA_IMAGES
+        } else {
+            android.Manifest.permission.READ_EXTERNAL_STORAGE
+        }
+
+        if (ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED) {
+            pickImageFromGallery()
+        } else {
+            ActivityCompat.requestPermissions(this, arrayOf(permission), REQUEST_PERMISSION)
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_PERMISSION) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                pickImageFromGallery()
+            } else {
+                ToastUtils.show(this, "需要存储权限才能选择图片")
+            }
+        }
+    }
+
+    private fun pickImageFromGallery() {
+        if (selectedImages.size >= MAX_IMAGE_COUNT) {
+            ToastUtils.show(this, "最多只能选择${MAX_IMAGE_COUNT}张图片")
+            return
+        }
+        val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+            type = "image/*"
+            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+        }
+        startActivityForResult(Intent.createChooser(intent, "选择图片"), REQUEST_PICK_IMAGE)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_PICK_IMAGE && resultCode == RESULT_OK) {
+            data?.let { intent ->
+                val selectedUris = mutableListOf<Uri>()
+                intent.clipData?.let { clipData ->
+                    for (i in 0 until clipData.itemCount) {
+                        if (selectedImages.size + selectedUris.size < MAX_IMAGE_COUNT) {
+                            selectedUris.add(clipData.getItemAt(i).uri)
+                        } else break
+                    }
+                } ?: intent.data?.let { uri ->
+                    selectedUris.add(uri)
+                }
+                selectedUris.forEach { uri ->
+                    val privatePath = copyImageToPrivateDir(uri)
+                    if (privatePath != null) {
+                        imageAdapter.addImage(privatePath)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun copyImageToPrivateDir(uri: Uri): String? {
+        return try {
+            val inputStream: InputStream? = contentResolver.openInputStream(uri)
+            val fileName = "medical_record_${System.currentTimeMillis()}.jpg"
+            val privateDir = getDir("medical_records", MODE_PRIVATE)
+            val destFile = File(privateDir, fileName)
+            val outputStream = FileOutputStream(destFile)
+            inputStream?.copyTo(outputStream)
+            inputStream?.close()
+            outputStream.close()
+            destFile.absolutePath
+        } catch (e: Exception) {
+            e.printStackTrace()
+            ToastUtils.show(this, "图片处理失败")
+            null
+        }
+    }
+
+    private fun showDeleteImageConfirm(position: Int) {
+        DialogUtils.showConfirm(this, "删除图片", "确定要删除这张图片吗？", "删除") {
+            val imagePath = selectedImages[position]
+            File(imagePath).delete()
+            imageAdapter.removeImage(position)
+        }
+    }
+
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
-            android.R.id.home -> {
-                finish()
-                true
-            }
+            android.R.id.home -> { finish(); true }
             else -> super.onOptionsItemSelected(item)
         }
     }

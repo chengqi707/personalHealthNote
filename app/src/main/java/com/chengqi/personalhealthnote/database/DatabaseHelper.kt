@@ -21,7 +21,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
 
     companion object {
         private const val DATABASE_NAME = "health_note.db"
-        private const val DATABASE_VERSION = 4
+        private const val DATABASE_VERSION = 5
 
         // 健康记录表
         private const val TABLE_HEALTH_RECORD = "health_record"
@@ -56,6 +56,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         private const val COLUMN_MR_MEDICINES = "medicines"
         private const val COLUMN_MR_HEALTH_EVALUATION = "health_evaluation"
         private const val COLUMN_MR_LIFE_SUGGESTION = "life_suggestion"
+        private const val COLUMN_MR_IMAGE_PATHS = "image_paths"
         private const val COLUMN_MEDICINE_NAME = "medicine_name"
         private const val COLUMN_DOSAGE = "dosage"
         private const val COLUMN_UNIT = "unit"
@@ -135,7 +136,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
                 $COLUMN_CREATE_TIME INTEGER DEFAULT 0,
                 $COLUMN_UPDATE_TIME INTEGER DEFAULT 0,
                 $COLUMN_MR_HEALTH_EVALUATION TEXT,
-                $COLUMN_MR_LIFE_SUGGESTION TEXT
+                $COLUMN_MR_LIFE_SUGGESTION TEXT,
+                $COLUMN_MR_IMAGE_PATHS TEXT DEFAULT ''
             )
         """
     }
@@ -162,6 +164,10 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         if (oldVersion < 4) {
             // 版本3升级到版本4，新增就医记录表
             db?.execSQL(CREATE_MEDICAL_RECORD_TABLE)
+        }
+        if (oldVersion < 5) {
+            // 版本4升级到版本5，就医记录表新增图片路径字段
+            db?.execSQL("ALTER TABLE $TABLE_MEDICAL_RECORD ADD COLUMN $COLUMN_MR_IMAGE_PATHS TEXT DEFAULT ''")
         }
     }
 
@@ -775,6 +781,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             put(COLUMN_MR_DIAGNOSIS_RESULT, record.diagnosisResult)
             put(COLUMN_MR_CHECK_ITEMS, record.checkItems)
             put(COLUMN_MR_MEDICINES, record.medicines)
+            put(COLUMN_MR_IMAGE_PATHS, record.imagePaths)
             put(COLUMN_CREATE_TIME, record.createTime)
             put(COLUMN_UPDATE_TIME, record.updateTime)
             put(COLUMN_MR_HEALTH_EVALUATION, record.healthEvaluation)
@@ -789,6 +796,37 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
      * @return 更新的行数
      */
     fun updateMedicalRecord(record: MedicalRecord): Int {
+        // 获取原有记录，对比图片，删除不再使用的图片
+        val oldRecord = getMedicalRecordById(record.id)
+        oldRecord?.let { old ->
+            if (old.imagePaths.isNotEmpty() && old.imagePaths != record.imagePaths) {
+                try {
+                    val oldPaths = mutableListOf<String>()
+                    val oldJson = org.json.JSONArray(old.imagePaths)
+                    for (i in 0 until oldJson.length()) {
+                        oldPaths.add(oldJson.getString(i))
+                    }
+                    val newPaths = mutableListOf<String>()
+                    if (record.imagePaths.isNotEmpty()) {
+                        val newJson = org.json.JSONArray(record.imagePaths)
+                        for (i in 0 until newJson.length()) {
+                            newPaths.add(newJson.getString(i))
+                        }
+                    }
+                    oldPaths.forEach { path ->
+                        if (!newPaths.contains(path)) {
+                            val imageFile = java.io.File(path)
+                            if (imageFile.exists()) {
+                                imageFile.delete()
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+
         val db = writableDatabase
         val values = ContentValues().apply {
             put(COLUMN_MR_MEDICAL_TIME, record.medicalTime)
@@ -798,8 +836,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             put(COLUMN_MR_DIAGNOSIS_RESULT, record.diagnosisResult)
             put(COLUMN_MR_CHECK_ITEMS, record.checkItems)
             put(COLUMN_MR_MEDICINES, record.medicines)
+            put(COLUMN_MR_IMAGE_PATHS, record.imagePaths)
             put(COLUMN_UPDATE_TIME, System.currentTimeMillis())
-            // 编辑后清空评估缓存
             put(COLUMN_MR_HEALTH_EVALUATION, null as String?)
             put(COLUMN_MR_LIFE_SUGGESTION, null as String?)
         }
@@ -817,6 +855,25 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
      * @return 删除的行数
      */
     fun deleteMedicalRecord(id: Int): Int {
+        // 先获取记录，删除关联的图片文件
+        val record = getMedicalRecordById(id.toLong())
+        record?.let {
+            if (it.imagePaths.isNotEmpty()) {
+                try {
+                    val jsonArray = org.json.JSONArray(it.imagePaths)
+                    for (i in 0 until jsonArray.length()) {
+                        val imagePath = jsonArray.getString(i)
+                        val imageFile = java.io.File(imagePath)
+                        if (imageFile.exists()) {
+                            imageFile.delete()
+                        }
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+
         val db = writableDatabase
         return db.delete(
             TABLE_MEDICAL_RECORD,
@@ -933,6 +990,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             diagnosisResult = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MR_DIAGNOSIS_RESULT)),
             checkItems = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MR_CHECK_ITEMS)) ?: "",
             medicines = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MR_MEDICINES)) ?: "",
+            imagePaths = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MR_IMAGE_PATHS)) ?: "",
             createTime = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_CREATE_TIME)),
             updateTime = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_UPDATE_TIME)),
             healthEvaluation = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MR_HEALTH_EVALUATION)),

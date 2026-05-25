@@ -37,6 +37,16 @@
                 android:textSize="15sp"
                 android:textStyle="bold" />
 
+            <!-- 图片标识 -->
+            <ImageView
+                android:id="@+id/ivHasImages"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginEnd="4dp"
+                android:src="@drawable/ic_photo"
+                android:visibility="gone"
+                app:tint="?attr/colorPrimary" />
+
             <TextView
                 android:id="@+id/tvHospital"
                 android:layout_width="wrap_content"
