@@ -19,6 +19,8 @@ import com.chengqi.personalhealthnote.entity.HealthRecord
 import com.chengqi.personalhealthnote.entity.MedicalRecord
 import com.chengqi.personalhealthnote.entity.MedicineReminder
 import com.chengqi.personalhealthnote.network.ApiService
+import com.chengqi.personalhealthnote.utils.DialogUtils
+import com.chengqi.personalhealthnote.utils.ToastUtils
 import com.chengqi.personalhealthnote.utils.TokenManager
 import com.google.android.material.tabs.TabLayout
 import java.text.SimpleDateFormat
@@ -38,6 +40,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var medicineReminderAdapter: MedicineReminderAdapter
 
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    private val dateTimeFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+
+    // 就医记录筛选条件：0=全部，1=近1个月，2=近3个月，3=近1年
+    private var medicalRecordFilter = 0
 
     companion object {
         const val REQUEST_ADD_MEDICAL_RECORD = 1001
@@ -200,10 +206,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadMedicalRecords() {
-        val records = dbHelper.getAllMedicalRecords()
+        val records = when (medicalRecordFilter) {
+            0 -> dbHelper.getAllMedicalRecords()
+            else -> {
+                val cal = Calendar.getInstance()
+                when (medicalRecordFilter) {
+                    1 -> cal.add(Calendar.MONTH, -1)
+                    2 -> cal.add(Calendar.MONTH, -3)
+                    3 -> cal.add(Calendar.YEAR, -1)
+                }
+                val startTime = dateTimeFormat.format(cal.time)
+                val endTime = dateTimeFormat.format(Calendar.getInstance().time)
+                dbHelper.getMedicalRecordsByTimeRange(startTime, endTime)
+            }
+        }
         medicalRecordAdapter.setData(records)
 
-        // 就医记录Tab使用独立的RecyclerView需要切换adapter
         binding.recyclerViewHealthRecords.adapter = medicalRecordAdapter
         binding.recyclerViewHealthRecords.visibility = View.VISIBLE
         binding.recyclerViewMedicineReminders.visibility = View.GONE
@@ -251,75 +269,71 @@ class MainActivity : AppCompatActivity() {
      * 就医记录长按弹窗：删除、编辑
      */
     private fun showMedicalRecordLongClickDialog(record: MedicalRecord) {
-        val options = arrayOf("删除", "编辑")
-        AlertDialog.Builder(this)
-            .setTitle("操作")
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> showDeleteMedicalRecordDialog(record)
-                    1 -> {
-                        val intent = Intent(this, MedicalRecordEditActivity::class.java)
-                        intent.putExtra("record_id", record.id)
-                        startActivityForResult(intent, REQUEST_EDIT_MEDICAL_RECORD)
-                    }
+        DialogUtils.showOptions(this, "操作", arrayOf("删除", "编辑")) { which ->
+            when (which) {
+                0 -> showDeleteMedicalRecordDialog(record)
+                1 -> {
+                    val intent = Intent(this, MedicalRecordEditActivity::class.java)
+                    intent.putExtra("record_id", record.id)
+                    startActivityForResult(intent, REQUEST_EDIT_MEDICAL_RECORD)
                 }
             }
-            .show()
+        }
     }
 
     private fun showDeleteMedicalRecordDialog(record: MedicalRecord) {
-        AlertDialog.Builder(this)
-            .setTitle("删除确认")
-            .setMessage("确定要删除这条记录吗？删除后不可恢复")
-            .setPositiveButton("确定") { _, _ ->
-                val deletedRows = dbHelper.deleteMedicalRecord(record.id.toInt())
-                if (deletedRows > 0) {
-                    medicalRecordAdapter.removeRecord(record.id)
-                    if (medicalRecordAdapter.getData().isEmpty()) {
-                        binding.tvEmpty.visibility = View.VISIBLE
-                        binding.tvEmpty.text = "暂无就医记录，点击右下角添加"
-                    }
-                    Toast.makeText(this, "删除成功", Toast.LENGTH_SHORT).show()
+        DialogUtils.showConfirm(
+            this,
+            "删除确认",
+            "确定要删除这条记录吗？删除后不可恢复",
+            "确定"
+        ) {
+            val deletedRows = dbHelper.deleteMedicalRecord(record.id.toInt())
+            if (deletedRows > 0) {
+                medicalRecordAdapter.removeRecord(record.id)
+                if (medicalRecordAdapter.getData().isEmpty()) {
+                    binding.tvEmpty.visibility = View.VISIBLE
+                    binding.tvEmpty.text = "暂无就医记录，点击右下角添加"
                 }
+                ToastUtils.show(this, "删除成功")
             }
-            .setNegativeButton("取消", null)
-            .show()
+        }
     }
 
     private fun showDeleteConfirmDialog(record: HealthRecord) {
-        AlertDialog.Builder(this)
-            .setTitle("删除确认")
-            .setMessage("确定要删除 ${record.recordDate} 的健康记录吗？此操作不可恢复。")
-            .setPositiveButton("删除") { _, _ ->
-                val deletedRows = dbHelper.deleteHealthRecord(record.id)
-                if (deletedRows > 0) {
-                    healthRecordAdapter.removeRecord(record.id)
-                    if (healthRecordAdapter.getData().isEmpty()) {
-                        binding.tvEmpty.visibility = View.VISIBLE
-                        binding.tvEmpty.text = "暂无健康记录，点击右下角添加"
-                    }
+        DialogUtils.showConfirm(
+            this,
+            "删除确认",
+            "确定要删除 ${record.recordDate} 的健康记录吗？此操作不可恢复。",
+            "删除"
+        ) {
+            val deletedRows = dbHelper.deleteHealthRecord(record.id)
+            if (deletedRows > 0) {
+                healthRecordAdapter.removeRecord(record.id)
+                if (healthRecordAdapter.getData().isEmpty()) {
+                    binding.tvEmpty.visibility = View.VISIBLE
+                    binding.tvEmpty.text = "暂无健康记录，点击右下角添加"
                 }
             }
-            .setNegativeButton("取消", null)
-            .show()
+        }
     }
 
     private fun showDeleteMedicineConfirmDialog(reminder: MedicineReminder) {
-        AlertDialog.Builder(this)
-            .setTitle("删除确认")
-            .setMessage("确定要删除 \"${reminder.medicineName}\" 的用药提醒吗？此操作不可恢复。")
-            .setPositiveButton("删除") { _, _ ->
-                val deletedRows = dbHelper.deleteMedicineReminder(reminder.id)
-                if (deletedRows > 0) {
-                    medicineReminderAdapter.removeReminder(reminder.id)
-                    if (medicineReminderAdapter.getData().isEmpty()) {
-                        binding.tvEmpty.visibility = View.VISIBLE
-                        binding.tvEmpty.text = "暂无用药提醒，点击右下角添加"
-                    }
+        DialogUtils.showConfirm(
+            this,
+            "删除确认",
+            "确定要删除 \"${reminder.medicineName}\" 的用药提醒吗？此操作不可恢复。",
+            "删除"
+        ) {
+            val deletedRows = dbHelper.deleteMedicineReminder(reminder.id)
+            if (deletedRows > 0) {
+                medicineReminderAdapter.removeReminder(reminder.id)
+                if (medicineReminderAdapter.getData().isEmpty()) {
+                    binding.tvEmpty.visibility = View.VISIBLE
+                    binding.tvEmpty.text = "暂无用药提醒，点击右下角添加"
                 }
             }
-            .setNegativeButton("取消", null)
-            .show()
+        }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -352,6 +366,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
+            R.id.action_filter -> {
+                showFilterDialog()
+                true
+            }
             R.id.action_sync -> {
                 syncData()
                 true
@@ -360,12 +378,24 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun showFilterDialog() {
+        if (binding.tabLayout.selectedTabPosition != 0) {
+            ToastUtils.show(this, "筛选仅支持就医记录")
+            return
+        }
+        val options = arrayOf("全部", "近1个月", "近3个月", "近1年")
+        DialogUtils.showOptions(this, "按时间筛选", options) { which ->
+            medicalRecordFilter = which
+            loadMedicalRecords()
+        }
+    }
+
     private fun syncData() {
         if (!TokenManager.isLogin(this)) {
             startActivityForResult(Intent(this, LoginActivity::class.java), REQUEST_LOGIN)
             return
         }
-        Toast.makeText(this, "开始同步...", Toast.LENGTH_SHORT).show()
+        ToastUtils.show(this, "开始同步...")
         val context = this
         Thread {
             try {
@@ -377,7 +407,7 @@ class MainActivity : AppCompatActivity() {
                     } else {
                         syncSuccess = false
                         runOnUiThread {
-                            Toast.makeText(context, "拉取健康记录失败：$message", Toast.LENGTH_SHORT).show()
+                            ToastUtils.show(context, "拉取健康记录失败：$message")
                         }
                     }
                 }
@@ -387,7 +417,7 @@ class MainActivity : AppCompatActivity() {
                     } else {
                         syncSuccess = false
                         runOnUiThread {
-                            Toast.makeText(context, "拉取用药提醒失败：$message", Toast.LENGTH_SHORT).show()
+                            ToastUtils.show(context, "拉取用药提醒失败：$message")
                         }
                     }
                 }
@@ -400,7 +430,7 @@ class MainActivity : AppCompatActivity() {
                         } else {
                             syncSuccess = false
                             runOnUiThread {
-                                Toast.makeText(context, "上传健康记录失败：$message", Toast.LENGTH_SHORT).show()
+                                ToastUtils.show(context, "上传健康记录失败：$message")
                             }
                         }
                     }
@@ -414,7 +444,7 @@ class MainActivity : AppCompatActivity() {
                         } else {
                             syncSuccess = false
                             runOnUiThread {
-                                Toast.makeText(context, "上传用药提醒失败：$message", Toast.LENGTH_SHORT).show()
+                                ToastUtils.show(context, "上传用药提醒失败：$message")
                             }
                         }
                     }
@@ -423,12 +453,12 @@ class MainActivity : AppCompatActivity() {
                     TokenManager.updateLastSyncTime(context)
                     runOnUiThread {
                         loadData()
-                        Toast.makeText(context, "同步成功", Toast.LENGTH_SHORT).show()
+                        ToastUtils.show(context, "同步成功")
                     }
                 }
             } catch (e: Exception) {
                 runOnUiThread {
-                    Toast.makeText(context, "同步失败：${e.message}", Toast.LENGTH_SHORT).show()
+                    ToastUtils.show(context, "同步失败：${e.message}")
                 }
             }
         }.start()

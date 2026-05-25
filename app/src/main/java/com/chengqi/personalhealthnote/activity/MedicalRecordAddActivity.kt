@@ -11,6 +11,7 @@ import com.chengqi.personalhealthnote.R
 import com.chengqi.personalhealthnote.database.DatabaseHelper
 import com.chengqi.personalhealthnote.databinding.ActivityMedicalRecordAddBinding
 import com.chengqi.personalhealthnote.entity.MedicalRecord
+import com.chengqi.personalhealthnote.utils.ToastUtils
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -54,6 +55,27 @@ class MedicalRecordAddActivity : AppCompatActivity() {
         binding.btnSubmit.setOnClickListener {
             submitRecord()
         }
+
+        // 输入字数限制提示
+        setupMaxLengthWatcher(binding.etSymptoms, 500)
+        setupMaxLengthWatcher(binding.etDiagnosisResult, 500)
+        setupMaxLengthWatcher(binding.etCheckItems, 300)
+        setupMaxLengthWatcher(binding.etMedicines, 300)
+    }
+
+    private fun setupMaxLengthWatcher(editText: android.widget.EditText, maxLength: Int) {
+        var lastLength = 0
+        editText.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
+                lastLength = s?.length ?: 0
+            }
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                if (s != null && s.length == maxLength && lastLength < maxLength) {
+                    ToastUtils.show(this@MedicalRecordAddActivity, "输入内容已达上限")
+                }
+            }
+        })
     }
 
     /**
@@ -127,7 +149,7 @@ class MedicalRecordAddActivity : AppCompatActivity() {
                 diagnosisResult.isEmpty() -> "就诊结果"
                 else -> ""
             }
-            Toast.makeText(this, "请填写$firstEmptyField", Toast.LENGTH_SHORT).show()
+            ToastUtils.show(this, "请填写$firstEmptyField")
             return
         }
 
@@ -150,11 +172,11 @@ class MedicalRecordAddActivity : AppCompatActivity() {
 
         val newId = dbHelper.insertMedicalRecord(record)
         if (newId > 0) {
-            Toast.makeText(this, "新增成功", Toast.LENGTH_SHORT).show()
+            ToastUtils.show(this, "新增成功")
             setResult(RESULT_OK)
             finish()
         } else {
-            Toast.makeText(this, "保存失败，请重试", Toast.LENGTH_SHORT).show()
+            ToastUtils.show(this, "保存失败，请重试")
         }
     }
 

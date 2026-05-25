@@ -11,6 +11,8 @@ import com.chengqi.personalhealthnote.R
 import com.chengqi.personalhealthnote.database.DatabaseHelper
 import com.chengqi.personalhealthnote.databinding.ActivityMedicalRecordEditBinding
 import com.chengqi.personalhealthnote.entity.MedicalRecord
+import com.chengqi.personalhealthnote.utils.DialogUtils
+import com.chengqi.personalhealthnote.utils.ToastUtils
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -37,7 +39,7 @@ class MedicalRecordEditActivity : AppCompatActivity() {
 
         recordId = intent.getLongExtra("record_id", 0)
         if (recordId == 0L) {
-            Toast.makeText(this, "记录不存在", Toast.LENGTH_SHORT).show()
+            ToastUtils.show(this, "记录不存在")
             finish()
             return
         }
@@ -63,12 +65,33 @@ class MedicalRecordEditActivity : AppCompatActivity() {
         binding.btnSave.setOnClickListener {
             saveRecord()
         }
+
+        // 输入字数限制提示
+        setupMaxLengthWatcher(binding.etSymptoms, 500)
+        setupMaxLengthWatcher(binding.etDiagnosisResult, 500)
+        setupMaxLengthWatcher(binding.etCheckItems, 300)
+        setupMaxLengthWatcher(binding.etMedicines, 300)
+    }
+
+    private fun setupMaxLengthWatcher(editText: android.widget.EditText, maxLength: Int) {
+        var lastLength = 0
+        editText.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
+                lastLength = s?.length ?: 0
+            }
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                if (s != null && s.length == maxLength && lastLength < maxLength) {
+                    ToastUtils.show(this@MedicalRecordEditActivity, "输入内容已达上限")
+                }
+            }
+        })
     }
 
     private fun loadRecordData() {
         val record = dbHelper.getMedicalRecordById(recordId)
         if (record == null) {
-            Toast.makeText(this, "记录不存在", Toast.LENGTH_SHORT).show()
+            ToastUtils.show(this, "记录不存在")
             finish()
             return
         }
@@ -146,7 +169,7 @@ class MedicalRecordEditActivity : AppCompatActivity() {
                 diagnosisResult.isEmpty() -> "就诊结果"
                 else -> ""
             }
-            Toast.makeText(this, "请填写$firstEmptyField", Toast.LENGTH_SHORT).show()
+            ToastUtils.show(this, "请填写$firstEmptyField")
             return
         }
 
@@ -169,26 +192,23 @@ class MedicalRecordEditActivity : AppCompatActivity() {
         // updateMedicalRecord 会自动清空评估缓存
         val result = dbHelper.updateMedicalRecord(record)
         if (result > 0) {
-            Toast.makeText(this, "修改成功", Toast.LENGTH_SHORT).show()
+            ToastUtils.show(this, "修改成功")
             setResult(RESULT_OK)
             finish()
         } else {
-            Toast.makeText(this, "保存失败，请重试", Toast.LENGTH_SHORT).show()
+            ToastUtils.show(this, "保存失败，请重试")
         }
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             android.R.id.home -> {
-                // 返回键弹出确认弹窗
-                AlertDialog.Builder(this)
-                    .setTitle("提示")
-                    .setMessage("是否放弃修改？")
-                    .setPositiveButton("放弃") { _, _ ->
-                        finish()
-                    }
-                    .setNegativeButton("取消", null)
-                    .show()
+                DialogUtils.showConfirm(
+                    this,
+                    "提示",
+                    "是否放弃修改？",
+                    "放弃"
+                ) { finish() }
                 true
             }
             else -> super.onOptionsItemSelected(item)

@@ -17,6 +17,8 @@ import com.chengqi.personalhealthnote.database.DatabaseHelper
 import com.chengqi.personalhealthnote.databinding.ActivityMedicalRecordDetailBinding
 import com.chengqi.personalhealthnote.entity.MedicalRecord
 import com.chengqi.personalhealthnote.service.AiMedicalAssessmentService
+import com.chengqi.personalhealthnote.utils.DialogUtils
+import com.chengqi.personalhealthnote.utils.ToastUtils
 import org.json.JSONObject
 
 /**
@@ -45,7 +47,7 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
 
         recordId = intent.getLongExtra("record_id", 0)
         if (recordId == 0L) {
-            Toast.makeText(this, "记录不存在", Toast.LENGTH_SHORT).show()
+            ToastUtils.show(this, "记录不存在")
             finish()
             return
         }
@@ -76,6 +78,10 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
 
         // 健康评估按钮
         binding.btnHealthAssessment.setOnClickListener {
+            if (!currentRecord.hasValidInfo()) {
+                ToastUtils.show(this, "记录无有效信息，无法生成评估")
+                return@setOnClickListener
+            }
             generateHealthAssessment()
         }
     }
@@ -83,7 +89,7 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
     private fun loadRecordData() {
         val record = dbHelper.getMedicalRecordById(recordId)
         if (record == null) {
-            Toast.makeText(this, "记录不存在", Toast.LENGTH_SHORT).show()
+            ToastUtils.show(this, "记录不存在")
             finish()
             return
         }
@@ -112,7 +118,7 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
     private fun generateHealthAssessment() {
         // 检查网络
         if (!isNetworkAvailable()) {
-            Toast.makeText(this, "网络未连接，无法生成健康评估", Toast.LENGTH_SHORT).show()
+            ToastUtils.show(this, "网络未连接，无法生成健康评估")
             return
         }
 
@@ -148,7 +154,7 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
                     )
                     showAssessmentDialog(healthEvaluation, lifeSuggestion ?: "")
                 } else {
-                    Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+                    ToastUtils.show(this, message)
                 }
             }
         }
@@ -186,21 +192,21 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
     }
 
     private fun showDeleteConfirmDialog() {
-        AlertDialog.Builder(this)
-            .setTitle("删除确认")
-            .setMessage("确定要删除这条记录吗？删除后不可恢复")
-            .setPositiveButton("确定") { _, _ ->
-                val result = dbHelper.deleteMedicalRecord(currentRecord.id.toInt())
-                if (result > 0) {
-                    Toast.makeText(this, "删除成功", Toast.LENGTH_SHORT).show()
-                    setResult(Activity.RESULT_OK)
-                    finish()
-                } else {
-                    Toast.makeText(this, "删除失败", Toast.LENGTH_SHORT).show()
-                }
+        DialogUtils.showConfirm(
+            this,
+            "删除确认",
+            "确定要删除这条记录吗？删除后不可恢复",
+            "确定"
+        ) {
+            val result = dbHelper.deleteMedicalRecord(currentRecord.id.toInt())
+            if (result > 0) {
+                ToastUtils.show(this, "删除成功")
+                setResult(Activity.RESULT_OK)
+                finish()
+            } else {
+                ToastUtils.show(this, "删除失败")
             }
-            .setNegativeButton("取消", null)
-            .show()
+        }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
