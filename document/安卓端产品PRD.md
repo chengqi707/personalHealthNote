@@ -176,9 +176,10 @@ data class MedicalRecord(
 1. 存储方式：优先使用SQLite数据库（移动端本地存储最优），创建数据表`medical_record`，字段对应上述实体类；
 2. 排序规则：默认按`createTime`倒序排列（最新记录显示在最前面）；
 3. 筛选逻辑：根据`medicalTime`筛选（对比时间戳，筛选对应时间段内的记录）；
-4. 数据持久化：APP卸载后数据丢失，无需云端同步，无备份功能（简化开发）；
+4. 数据持久化：APP卸载后数据丢失；换机克隆/设备迁移场景下，APP数据（SQLite数据库、图片文件、SharedPreferences）可通过Android系统备份机制自动迁移至新设备（需在系统设置中开启备份）；
 5. 缓存逻辑：仅在首次调用API成功后，将`healthEvaluation`和`lifeSuggestion`字段与记录绑定存储，无过期逻辑；记录编辑后清空该字段，删除记录时同步删除缓存数据；
-6. 图片存储：病历卡照片存储在APP私有目录，路径以JSON数组格式存入`imagePaths`字段；编辑记录时删除不再使用的图片文件；删除记录时同步删除关联的图片文件。
+6. 图片存储：病历卡照片存储在APP私有目录，路径以JSON数组格式存入`imagePaths`字段；编辑记录时删除不再使用的图片文件；删除记录时同步删除关联的图片文件；
+7. 数据备份与迁移：APP已启用Android自动备份（`android:allowBackup=true`），配置了`<device-transfer>`规则支持换机克隆；默认备份覆盖所有APP数据（数据库、图片、SharedPreferences）；注意：Google云端备份有25MB限额，图片较多时可能超限，但设备直传（换机克隆）无此限制。
 
 ### 6.3 就诊记录固定格式转换规则（端侧执行）
 转换后的文本模板（字段为空则显示“未填写”）：
@@ -322,3 +323,11 @@ data class MedicalRecord(
    - 适配范围：所有页面、列表、卡片、输入框、按钮等全部控件均完美适配深色模式
    - 设计规范：严格遵循Material Design深色模式设计规范，对比度合适，夜间使用视觉舒适
    - 资源配置：新增values-night深色模式资源目录，所有颜色、样式自动适配
+
+### 10.5 2026年5月25日 — 数据备份与换机克隆支持
+1. **备份规则配置**：启用Android自动备份机制（`android:allowBackup=true`），显式配置`<device-transfer>`规则支持设备间数据迁移
+   - `backup_rules.xml`：默认覆盖所有APP数据（数据库、文件、SharedPreferences）
+   - `data_extraction_rules.xml`：同时配置`<cloud-backup>`和`<device-transfer>`，确保换机克隆场景下数据完整迁移
+2. **数据迁移范围**：SQLite数据库、就医记录图片（`app_medical_records/`目录）、健康记录图片（`app_records/`目录）、SharedPreferences均被覆盖
+3. **已知限制**：Google云端备份有25MB限额，图片较多时可能超限导致云端备份失败；设备直传（换机克隆）无此限制，可完整迁移所有数据
+4. **PRD更新**：§6.2存储说明更新，明确数据持久化策略和换机迁移支持
