@@ -5,6 +5,7 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import com.chengqi.personalhealthnote.entity.HealthRecord
+import com.chengqi.personalhealthnote.entity.MedicalRecord
 import com.chengqi.personalhealthnote.entity.MedicineReminder
 
 /**
@@ -20,7 +21,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
 
     companion object {
         private const val DATABASE_NAME = "health_note.db"
-        private const val DATABASE_VERSION = 3
+        private const val DATABASE_VERSION = 4
 
         // 健康记录表
         private const val TABLE_HEALTH_RECORD = "health_record"
@@ -43,6 +44,18 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
 
         // 用药提醒表
         private const val TABLE_MEDICINE_REMINDER = "medicine_reminder"
+
+        // 就医记录表
+        private const val TABLE_MEDICAL_RECORD = "medical_record"
+        private const val COLUMN_MR_MEDICAL_TIME = "medical_time"
+        private const val COLUMN_MR_HOSPITAL = "hospital"
+        private const val COLUMN_MR_DOCTOR = "doctor"
+        private const val COLUMN_MR_SYMPTOMS = "symptoms"
+        private const val COLUMN_MR_DIAGNOSIS_RESULT = "diagnosis_result"
+        private const val COLUMN_MR_CHECK_ITEMS = "check_items"
+        private const val COLUMN_MR_MEDICINES = "medicines"
+        private const val COLUMN_MR_HEALTH_EVALUATION = "health_evaluation"
+        private const val COLUMN_MR_LIFE_SUGGESTION = "life_suggestion"
         private const val COLUMN_MEDICINE_NAME = "medicine_name"
         private const val COLUMN_DOSAGE = "dosage"
         private const val COLUMN_UNIT = "unit"
@@ -107,11 +120,30 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
                 $COLUMN_DELETE_FLAG INTEGER DEFAULT 0
             )
         """
+
+        // 创建就医记录表的SQL
+        private const val CREATE_MEDICAL_RECORD_TABLE = """
+            CREATE TABLE IF NOT EXISTS $TABLE_MEDICAL_RECORD (
+                $COLUMN_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                $COLUMN_MR_MEDICAL_TIME TEXT NOT NULL,
+                $COLUMN_MR_HOSPITAL TEXT NOT NULL,
+                $COLUMN_MR_DOCTOR TEXT DEFAULT '',
+                $COLUMN_MR_SYMPTOMS TEXT NOT NULL,
+                $COLUMN_MR_DIAGNOSIS_RESULT TEXT NOT NULL,
+                $COLUMN_MR_CHECK_ITEMS TEXT DEFAULT '',
+                $COLUMN_MR_MEDICINES TEXT DEFAULT '',
+                $COLUMN_CREATE_TIME INTEGER DEFAULT 0,
+                $COLUMN_UPDATE_TIME INTEGER DEFAULT 0,
+                $COLUMN_MR_HEALTH_EVALUATION TEXT,
+                $COLUMN_MR_LIFE_SUGGESTION TEXT
+            )
+        """
     }
 
     override fun onCreate(db: SQLiteDatabase?) {
         db?.execSQL(CREATE_HEALTH_RECORD_TABLE)
         db?.execSQL(CREATE_MEDICINE_REMINDER_TABLE)
+        db?.execSQL(CREATE_MEDICAL_RECORD_TABLE)
     }
 
     override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
@@ -126,6 +158,10 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             db?.execSQL("ALTER TABLE $TABLE_HEALTH_RECORD ADD COLUMN $COLUMN_DELETE_FLAG INTEGER DEFAULT 0")
             db?.execSQL("ALTER TABLE $TABLE_MEDICINE_REMINDER ADD COLUMN $COLUMN_IS_SYNC INTEGER DEFAULT 0")
             db?.execSQL("ALTER TABLE $TABLE_MEDICINE_REMINDER ADD COLUMN $COLUMN_DELETE_FLAG INTEGER DEFAULT 0")
+        }
+        if (oldVersion < 4) {
+            // 版本3升级到版本4，新增就医记录表
+            db?.execSQL(CREATE_MEDICAL_RECORD_TABLE)
         }
     }
 
@@ -721,6 +757,188 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
     }
 
     // ==================== 同步相关方法 ====================
+
+    // ==================== 就医记录 CRUD 操作 ====================
+
+    /**
+     * 插入就医记录
+     * @param record 就医记录对象
+     * @return 插入记录的ID，-1表示插入失败
+     */
+    fun insertMedicalRecord(record: MedicalRecord): Long {
+        val db = writableDatabase
+        val values = ContentValues().apply {
+            put(COLUMN_MR_MEDICAL_TIME, record.medicalTime)
+            put(COLUMN_MR_HOSPITAL, record.hospital)
+            put(COLUMN_MR_DOCTOR, record.doctor)
+            put(COLUMN_MR_SYMPTOMS, record.symptoms)
+            put(COLUMN_MR_DIAGNOSIS_RESULT, record.diagnosisResult)
+            put(COLUMN_MR_CHECK_ITEMS, record.checkItems)
+            put(COLUMN_MR_MEDICINES, record.medicines)
+            put(COLUMN_CREATE_TIME, record.createTime)
+            put(COLUMN_UPDATE_TIME, record.updateTime)
+            put(COLUMN_MR_HEALTH_EVALUATION, record.healthEvaluation)
+            put(COLUMN_MR_LIFE_SUGGESTION, record.lifeSuggestion)
+        }
+        return db.insert(TABLE_MEDICAL_RECORD, null, values)
+    }
+
+    /**
+     * 更新就医记录
+     * @param record 就医记录对象
+     * @return 更新的行数
+     */
+    fun updateMedicalRecord(record: MedicalRecord): Int {
+        val db = writableDatabase
+        val values = ContentValues().apply {
+            put(COLUMN_MR_MEDICAL_TIME, record.medicalTime)
+            put(COLUMN_MR_HOSPITAL, record.hospital)
+            put(COLUMN_MR_DOCTOR, record.doctor)
+            put(COLUMN_MR_SYMPTOMS, record.symptoms)
+            put(COLUMN_MR_DIAGNOSIS_RESULT, record.diagnosisResult)
+            put(COLUMN_MR_CHECK_ITEMS, record.checkItems)
+            put(COLUMN_MR_MEDICINES, record.medicines)
+            put(COLUMN_UPDATE_TIME, System.currentTimeMillis())
+            // 编辑后清空评估缓存
+            put(COLUMN_MR_HEALTH_EVALUATION, null as String?)
+            put(COLUMN_MR_LIFE_SUGGESTION, null as String?)
+        }
+        return db.update(
+            TABLE_MEDICAL_RECORD,
+            values,
+            "$COLUMN_ID = ?",
+            arrayOf(record.id.toString())
+        )
+    }
+
+    /**
+     * 删除就医记录
+     * @param id 记录ID
+     * @return 删除的行数
+     */
+    fun deleteMedicalRecord(id: Int): Int {
+        val db = writableDatabase
+        return db.delete(
+            TABLE_MEDICAL_RECORD,
+            "$COLUMN_ID = ?",
+            arrayOf(id.toString())
+        )
+    }
+
+    /**
+     * 根据ID查询就医记录
+     * @param id 记录ID
+     * @return 就医记录对象，未找到返回null
+     */
+    fun getMedicalRecordById(id: Long): MedicalRecord? {
+        val db = readableDatabase
+        val cursor = db.query(
+            TABLE_MEDICAL_RECORD,
+            null,
+            "$COLUMN_ID = ?",
+            arrayOf(id.toString()),
+            null,
+            null,
+            null
+        )
+        return if (cursor.moveToFirst()) {
+            cursorToMedicalRecord(cursor)
+        } else {
+            null
+        }.also {
+            cursor.close()
+        }
+    }
+
+    /**
+     * 查询所有就医记录（按创建时间倒序）
+     * @return 就医记录列表
+     */
+    fun getAllMedicalRecords(): List<MedicalRecord> {
+        val records = mutableListOf<MedicalRecord>()
+        val db = readableDatabase
+        val cursor = db.query(
+            TABLE_MEDICAL_RECORD,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "$COLUMN_CREATE_TIME DESC"
+        )
+        while (cursor.moveToNext()) {
+            records.add(cursorToMedicalRecord(cursor))
+        }
+        cursor.close()
+        return records
+    }
+
+    /**
+     * 按时间范围查询就医记录
+     * @param startTime 开始时间，格式：yyyy-MM-dd HH:mm
+     * @param endTime 结束时间，格式：yyyy-MM-dd HH:mm
+     * @return 就医记录列表
+     */
+    fun getMedicalRecordsByTimeRange(startTime: String, endTime: String): List<MedicalRecord> {
+        val records = mutableListOf<MedicalRecord>()
+        val db = readableDatabase
+        val cursor = db.query(
+            TABLE_MEDICAL_RECORD,
+            null,
+            "$COLUMN_MR_MEDICAL_TIME >= ? AND $COLUMN_MR_MEDICAL_TIME <= ?",
+            arrayOf(startTime, endTime),
+            null,
+            null,
+            "$COLUMN_CREATE_TIME DESC"
+        )
+        while (cursor.moveToNext()) {
+            records.add(cursorToMedicalRecord(cursor))
+        }
+        cursor.close()
+        return records
+    }
+
+    /**
+     * 更新就医记录的评估缓存
+     * @param id 记录ID
+     * @param healthEvaluation 健康评估结果
+     * @param lifeSuggestion 生活建议
+     * @return 更新的行数
+     */
+    fun updateMedicalRecordEvaluation(id: Long, healthEvaluation: String, lifeSuggestion: String): Int {
+        val db = writableDatabase
+        val values = ContentValues().apply {
+            put(COLUMN_MR_HEALTH_EVALUATION, healthEvaluation)
+            put(COLUMN_MR_LIFE_SUGGESTION, lifeSuggestion)
+            put(COLUMN_UPDATE_TIME, System.currentTimeMillis())
+        }
+        return db.update(
+            TABLE_MEDICAL_RECORD,
+            values,
+            "$COLUMN_ID = ?",
+            arrayOf(id.toString())
+        )
+    }
+
+    /**
+     * 将Cursor转换为MedicalRecord对象
+     */
+    private fun cursorToMedicalRecord(cursor: android.database.Cursor): MedicalRecord {
+        return MedicalRecord(
+            id = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_ID)),
+            medicalTime = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MR_MEDICAL_TIME)),
+            hospital = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MR_HOSPITAL)),
+            doctor = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MR_DOCTOR)) ?: "",
+            symptoms = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MR_SYMPTOMS)),
+            diagnosisResult = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MR_DIAGNOSIS_RESULT)),
+            checkItems = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MR_CHECK_ITEMS)) ?: "",
+            medicines = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MR_MEDICINES)) ?: "",
+            createTime = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_CREATE_TIME)),
+            updateTime = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_UPDATE_TIME)),
+            healthEvaluation = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MR_HEALTH_EVALUATION)),
+            lifeSuggestion = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MR_LIFE_SUGGESTION))
+        )
+    }
 
     /**
      * 获取所有未同步的健康记录（包括已删除的）

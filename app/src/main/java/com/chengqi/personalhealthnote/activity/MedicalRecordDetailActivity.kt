@@ -1,0 +1,228 @@
+package com.chengqi.personalhealthnote.activity
+
+import android.app.Activity
+import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.os.Bundle
+import android.view.MenuItem
+import android.view.View
+import android.widget.ScrollView
+import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+import com.chengqi.personalhealthnote.R
+import com.chengqi.personalhealthnote.database.DatabaseHelper
+import com.chengqi.personalhealthnote.databinding.ActivityMedicalRecordDetailBinding
+import com.chengqi.personalhealthnote.entity.MedicalRecord
+import com.chengqi.personalhealthnote.service.AiMedicalAssessmentService
+import org.json.JSONObject
+
+/**
+ * 就医记录详情页
+ * 按 PRD §4.3 实现
+ */
+class MedicalRecordDetailActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivityMedicalRecordDetailBinding
+    private lateinit var dbHelper: DatabaseHelper
+    private var recordId: Long = 0
+    private lateinit var currentRecord: MedicalRecord
+    private lateinit var aiAssessmentService: AiMedicalAssessmentService
+
+    companion object {
+        const val REQUEST_EDIT_RECORD = 2001
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = ActivityMedicalRecordDetailBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        dbHelper = DatabaseHelper(this)
+        aiAssessmentService = AiMedicalAssessmentService()
+
+        recordId = intent.getLongExtra("record_id", 0)
+        if (recordId == 0L) {
+            Toast.makeText(this, "记录不存在", Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
+
+        initViews()
+        setupListeners()
+        loadRecordData()
+    }
+
+    private fun initViews() {
+        setSupportActionBar(binding.toolbar)
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        supportActionBar?.title = "就医记录详情"
+    }
+
+    private fun setupListeners() {
+        // 删除按钮
+        binding.btnDelete.setOnClickListener {
+            showDeleteConfirmDialog()
+        }
+
+        // 编辑按钮
+        binding.btnEdit.setOnClickListener {
+            val intent = Intent(this, MedicalRecordEditActivity::class.java)
+            intent.putExtra("record_id", recordId)
+            startActivityForResult(intent, REQUEST_EDIT_RECORD)
+        }
+
+        // 健康评估按钮
+        binding.btnHealthAssessment.setOnClickListener {
+            generateHealthAssessment()
+        }
+    }
+
+    private fun loadRecordData() {
+        val record = dbHelper.getMedicalRecordById(recordId)
+        if (record == null) {
+            Toast.makeText(this, "记录不存在", Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
+
+        currentRecord = record
+
+        binding.tvMedicalTime.text = record.medicalTime
+        binding.tvHospital.text = record.hospital
+        binding.tvDoctor.text = record.doctor.ifEmpty { "未填写" }
+        binding.tvSymptoms.text = record.symptoms
+        binding.tvDiagnosisResult.text = record.diagnosisResult
+        binding.tvCheckItems.text = record.checkItems.ifEmpty { "未填写" }
+        binding.tvMedicines.text = record.medicines.ifEmpty { "未填写" }
+
+        // 评估按钮状态
+        binding.btnHealthAssessment.isEnabled = record.hasValidInfo()
+        if (!record.hasValidInfo()) {
+            binding.btnHealthAssessment.setBackgroundResource(R.drawable.bg_button_disabled)
+            binding.btnHealthAssessment.setTextColor(getColor(R.color.textHint))
+        }
+    }
+
+    /**
+     * 生成健康评估
+     */
+    private fun generateHealthAssessment() {
+        // 检查网络
+        if (!isNetworkAvailable()) {
+            Toast.makeText(this, "网络未连接，无法生成健康评估", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // 检查缓存
+        if (!currentRecord.healthEvaluation.isNullOrEmpty()) {
+            showAssessmentDialog(currentRecord.healthEvaluation!!, currentRecord.lifeSuggestion ?: "")
+            return
+        }
+
+        // 显示加载状态
+        binding.layoutLoading.visibility = View.VISIBLE
+        binding.btnHealthAssessment.isEnabled = false
+        binding.btnHealthAssessment.text = "评估中..."
+
+        // 调用云侧模型API
+        val standardText = currentRecord.toStandardFormatText()
+        aiAssessmentService.assess(standardText) { success, message, healthEvaluation, lifeSuggestion ->
+            runOnUiThread {
+                binding.layoutLoading.visibility = View.GONE
+                binding.btnHealthAssessment.isEnabled = true
+                binding.btnHealthAssessment.text = "生成健康评估"
+
+                if (success && healthEvaluation != null) {
+                    // 缓存结果到本地
+                    dbHelper.updateMedicalRecordEvaluation(
+                        currentRecord.id,
+                        healthEvaluation,
+                        lifeSuggestion ?: ""
+                    )
+                    currentRecord = currentRecord.copy(
+                        healthEvaluation = healthEvaluation,
+                        lifeSuggestion = lifeSuggestion
+                    )
+                    showAssessmentDialog(healthEvaluation, lifeSuggestion ?: "")
+                } else {
+                    Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    /**
+     * 展示评估结果弹窗
+     */
+    private fun showAssessmentDialog(healthEvaluation: String, lifeSuggestion: String) {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_health_assessment, null)
+        val tvHealthEvaluation = dialogView.findViewById<TextView>(R.id.tvHealthEvaluation)
+        val tvLifeSuggestion = dialogView.findViewById<TextView>(R.id.tvLifeSuggestion)
+
+        tvHealthEvaluation.text = healthEvaluation
+        tvLifeSuggestion.text = lifeSuggestion
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("健康状态评估与生活建议")
+            .setView(dialogView)
+            .setPositiveButton("关闭", null)
+            .setCancelable(false)
+            .create()
+
+        dialog.show()
+    }
+
+    /**
+     * 检查网络是否可用
+     */
+    private fun isNetworkAvailable(): Boolean {
+        val cm = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = cm.activeNetwork ?: return false
+        val capabilities = cm.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
+    private fun showDeleteConfirmDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("删除确认")
+            .setMessage("确定要删除这条记录吗？删除后不可恢复")
+            .setPositiveButton("确定") { _, _ ->
+                val result = dbHelper.deleteMedicalRecord(currentRecord.id.toInt())
+                if (result > 0) {
+                    Toast.makeText(this, "删除成功", Toast.LENGTH_SHORT).show()
+                    setResult(Activity.RESULT_OK)
+                    finish()
+                } else {
+                    Toast.makeText(this, "删除失败", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_EDIT_RECORD && resultCode == Activity.RESULT_OK) {
+            loadRecordData()
+            setResult(Activity.RESULT_OK)
+        }
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            android.R.id.home -> {
+                finish()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        dbHelper.close()
+    }
+}
