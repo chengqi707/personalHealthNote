@@ -21,7 +21,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
 
     companion object {
         private const val DATABASE_NAME = "health_note.db"
-        private const val DATABASE_VERSION = 5
+        private const val DATABASE_VERSION = 6
 
         // 健康记录表
         private const val TABLE_HEALTH_RECORD = "health_record"
@@ -74,6 +74,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         // 同步相关字段，和健康记录表共用
         // private const val COLUMN_IS_SYNC = "is_sync"
         // private const val COLUMN_DELETE_FLAG = "delete_flag"
+        private const val COLUMN_CALENDAR_EVENT_IDS = "calendar_event_ids"
 
         // 创建健康记录表的SQL
         private const val CREATE_HEALTH_RECORD_TABLE = """
@@ -118,7 +119,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
                 $COLUMN_CREATE_TIME INTEGER DEFAULT 0,
                 $COLUMN_UPDATE_TIME INTEGER DEFAULT 0,
                 $COLUMN_IS_SYNC INTEGER DEFAULT 0,
-                $COLUMN_DELETE_FLAG INTEGER DEFAULT 0
+                $COLUMN_DELETE_FLAG INTEGER DEFAULT 0,
+                $COLUMN_CALENDAR_EVENT_IDS TEXT DEFAULT ''
             )
         """
 
@@ -168,6 +170,10 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         if (oldVersion < 5) {
             // 版本4升级到版本5，就医记录表新增图片路径字段
             db?.execSQL("ALTER TABLE $TABLE_MEDICAL_RECORD ADD COLUMN $COLUMN_MR_IMAGE_PATHS TEXT DEFAULT ''")
+        }
+        if (oldVersion < 6) {
+            // 版本5升级到版本6，用药提醒表新增日历事件ID字段
+            db?.execSQL("ALTER TABLE $TABLE_MEDICINE_REMINDER ADD COLUMN $COLUMN_CALENDAR_EVENT_IDS TEXT DEFAULT ''")
         }
     }
 
@@ -480,6 +486,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             put(COLUMN_UPDATE_TIME, reminder.updateTime)
             put(COLUMN_IS_SYNC, reminder.isSync)
             put(COLUMN_DELETE_FLAG, reminder.deleteFlag)
+            put(COLUMN_CALENDAR_EVENT_IDS, reminder.calendarEventIds)
         }
         return db.insert(TABLE_MEDICINE_REMINDER, null, values)
     }
@@ -508,6 +515,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             put(COLUMN_MEDICINE_NOTES, reminder.notes)
             put(COLUMN_UPDATE_TIME, System.currentTimeMillis())
             put(COLUMN_IS_SYNC, 0) // 修改后标记为未同步
+            put(COLUMN_CALENDAR_EVENT_IDS, reminder.calendarEventIds)
         }
         return db.update(
             TABLE_MEDICINE_REMINDER,
@@ -678,7 +686,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             createTime = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_CREATE_TIME)),
             updateTime = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_UPDATE_TIME)),
             isSync = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_IS_SYNC)),
-            deleteFlag = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_DELETE_FLAG))
+            deleteFlag = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_DELETE_FLAG)),
+            calendarEventIds = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_CALENDAR_EVENT_IDS)) ?: ""
         )
     }
 

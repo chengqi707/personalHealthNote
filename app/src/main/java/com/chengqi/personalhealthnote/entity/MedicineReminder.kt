@@ -23,7 +23,8 @@ data class MedicineReminder(
     val createTime: Long = System.currentTimeMillis(),
     val updateTime: Long = System.currentTimeMillis(),
     val isSync: Int = 0,         // 是否已同步：0未同步 1已同步
-    val deleteFlag: Int = 0      // 是否已删除：0未删除 1已删除
+    val deleteFlag: Int = 0,     // 是否已删除：0未删除 1已删除
+    val calendarEventIds: String = ""  // 日历事件ID，JSON数组格式，对应remindTime1-5
 ) {
     /**
      * 获取服用时间描述

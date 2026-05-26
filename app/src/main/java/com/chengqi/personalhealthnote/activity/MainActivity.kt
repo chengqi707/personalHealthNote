@@ -18,6 +18,8 @@ import com.chengqi.personalhealthnote.entity.HealthRecord
 import com.chengqi.personalhealthnote.entity.MedicalRecord
 import com.chengqi.personalhealthnote.entity.MedicineReminder
 import com.chengqi.personalhealthnote.network.ApiService
+import com.chengqi.personalhealthnote.utils.AlarmScheduler
+import com.chengqi.personalhealthnote.utils.CalendarHelper
 import com.chengqi.personalhealthnote.utils.DialogUtils
 import com.chengqi.personalhealthnote.utils.ToastUtils
 import com.chengqi.personalhealthnote.utils.TokenManager
@@ -169,6 +171,11 @@ class MainActivity : AppCompatActivity() {
             onSwitchChanged = { reminder, isEnabled ->
                 dbHelper.toggleMedicineReminder(reminder.id, isEnabled)
                 medicineReminderAdapter.updateReminderStatus(reminder.id, isEnabled)
+                if (isEnabled) {
+                    AlarmScheduler.scheduleReminder(this, reminder)
+                } else {
+                    AlarmScheduler.cancelReminder(this, reminder)
+                }
             }
         )
 
@@ -400,6 +407,8 @@ class MainActivity : AppCompatActivity() {
         ) {
             val deletedRows = dbHelper.deleteMedicineReminder(reminder.id)
             if (deletedRows > 0) {
+                AlarmScheduler.cancelReminder(this, reminder)
+                CalendarHelper.deleteCalendarEvents(this, reminder.calendarEventIds)
                 medicineReminderAdapter.removeReminder(reminder.id)
                 if (medicineReminderAdapter.getData().isEmpty()) {
                     binding.tvEmpty.visibility = View.VISIBLE

@@ -12,6 +12,8 @@ import androidx.appcompat.app.AppCompatActivity
 import com.chengqi.personalhealthnote.database.DatabaseHelper
 import com.chengqi.personalhealthnote.databinding.ActivityMedicineReminderEditBinding
 import com.chengqi.personalhealthnote.entity.MedicineReminder
+import com.chengqi.personalhealthnote.utils.AlarmScheduler
+import com.chengqi.personalhealthnote.utils.CalendarHelper
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -27,6 +29,7 @@ class MedicineReminderEditActivity : AppCompatActivity() {
 
     private var reminderId: Long = 0
     private var isEditMode: Boolean = false
+    private var existingCalendarEventIds: String = ""
 
     private var selectedStartDate: String = ""
     private var selectedEndDate: String? = null
@@ -295,6 +298,8 @@ class MedicineReminderEditActivity : AppCompatActivity() {
     private fun loadReminderData() {
         val reminder = dbHelper.getMedicineReminderById(reminderId)
         if (reminder != null) {
+            existingCalendarEventIds = reminder.calendarEventIds
+
             // 设置药品名称
             binding.etMedicineName.setText(reminder.medicineName)
 
@@ -474,6 +479,35 @@ class MedicineReminderEditActivity : AppCompatActivity() {
         }
 
         if (result > 0) {
+            // 获取保存后的完整提醒对象（含id）
+            val savedReminder = if (isEditMode) {
+                reminder
+            } else {
+                dbHelper.getMedicineReminderById(reminder.id) ?: reminder
+            }
+
+            // 调度APP通知
+            if (isEditMode) {
+                val oldReminder = reminder.copy(calendarEventIds = existingCalendarEventIds)
+                AlarmScheduler.rescheduleReminder(this, oldReminder, savedReminder)
+            } else {
+                AlarmScheduler.scheduleReminder(this, savedReminder)
+            }
+
+            // 写入系统日历
+            try {
+                val newEventIds = if (isEditMode) {
+                    CalendarHelper.updateCalendarEvents(this, savedReminder, existingCalendarEventIds)
+                } else {
+                    CalendarHelper.addCalendarEvents(this, savedReminder)
+                }
+                if (newEventIds.isNotEmpty()) {
+                    dbHelper.updateMedicineReminder(savedReminder.copy(calendarEventIds = newEventIds))
+                }
+            } catch (e: SecurityException) {
+                // 无日历权限，忽略
+            }
+
             Toast.makeText(
                 this,
                 if (isEditMode) "用药提醒已更新" else "用药提醒已添加",

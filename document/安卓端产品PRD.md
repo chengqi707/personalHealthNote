@@ -260,6 +260,8 @@ data class MedicalRecord(
 
 ### 9.1 用药提醒模块
 - 功能：药品名称、剂量、服药时间、启用/禁用、饭前饭后等管理
+- 通知：支持APP通知（AlarmManager精确闹钟）和系统日历提醒两种方式
+- 调度：增删改+开关时自动同步调度闹钟和日历事件；开机自动重注册
 - 状态：已实现，与就医记录并列为独立 Tab
 - 迭代优先级：低
 
@@ -351,3 +353,22 @@ data class MedicalRecord(
    - 列表卡片新增 CheckBox，选择模式下显示
    - MainActivity 新增批量删除入口（菜单"批量删除"）、底部操作栏（全选+删除）
    - 删除前二次确认，显示选中数量
+
+### 10.7 2026年5月26日 — 用药提醒通知功能
+1. **APP通知提醒**：用药提醒通过AlarmManager精确闹钟触发系统Notification
+   - 新增 AlarmScheduler：封装闹钟注册/取消/重调度逻辑，requestCode=reminderId*10+timeIndex
+   - 新增 MedicineReminderReceiver：BroadcastReceiver接收闹钟广播，发Notification（药品名+剂量+饭前饭后），并自动设置下一天闹钟循环
+   - 新增 NotificationChannel（IMPORTANCE_HIGH），通知支持声音+震动
+   - 仅在 startDate~endDate 范围内触发，禁用时不触发
+2. **系统日历提醒**：用药提醒同步写入系统日历，用户可在日历APP中查看和编辑
+   - 新增 CalendarHelper：通过CalendarProvider创建/更新/删除日历事件，每个提醒时间对应一个日历事件+0分钟提醒
+   - 日历事件标题："用药提醒：{药品名}"，描述含剂量+饭前饭后+备注
+   - 日历事件支持重复规则（FREQ=DAILY），有结束日期时设置UNTIL
+   - 数据库新增 calendar_event_ids 字段（v5→v6升级），存储各提醒时间对应的日历event ID
+3. **调度联动**：增删改+开关时同步调度APP通知和系统日历
+   - 新增提醒：注册闹钟+创建日历事件
+   - 编辑提醒：先取消旧闹钟+删除旧日历事件，再注册新闹钟+创建新日历事件
+   - 删除提醒：取消闹钟+删除日历事件
+   - 开关提醒：注册/取消闹钟（日历事件保留，由系统日历管理）
+4. **开机重注册**：新增 BootReceiver 监听 BOOT_COMPLETED，开机后重新注册所有启用的提醒闹钟
+5. **权限**：新增 READ_CALENDAR、WRITE_CALENDAR、RECEIVE_BOOT_COMPLETED 权限
