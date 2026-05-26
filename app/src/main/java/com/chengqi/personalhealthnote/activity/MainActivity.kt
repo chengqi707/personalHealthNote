@@ -407,13 +407,18 @@ class MainActivity : AppCompatActivity() {
         ) {
             val deletedRows = dbHelper.deleteMedicineReminder(reminder.id)
             if (deletedRows > 0) {
-                AlarmScheduler.cancelReminder(this, reminder)
-                CalendarHelper.deleteCalendarEvents(this, reminder.calendarEventIds)
-                medicineReminderAdapter.removeReminder(reminder.id)
-                if (medicineReminderAdapter.getData().isEmpty()) {
-                    binding.tvEmpty.visibility = View.VISIBLE
-                    binding.tvEmpty.text = "暂无用药提醒，点击右下角添加"
+                try {
+                    AlarmScheduler.cancelReminder(this, reminder)
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
+                try {
+                    CalendarHelper.deleteCalendarEvents(this, reminder.calendarEventIds)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+                loadMedicineReminders()
+                ToastUtils.show(this, "删除成功")
             }
         }
     }
