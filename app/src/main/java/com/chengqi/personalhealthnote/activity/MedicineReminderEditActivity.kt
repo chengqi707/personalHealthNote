@@ -2,6 +2,8 @@ package com.chengqi.personalhealthnote.activity
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.view.MenuItem
 import android.view.View
@@ -9,6 +11,8 @@ import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.chengqi.personalhealthnote.database.DatabaseHelper
 import com.chengqi.personalhealthnote.databinding.ActivityMedicineReminderEditBinding
 import com.chengqi.personalhealthnote.entity.MedicineReminder
@@ -30,6 +34,13 @@ class MedicineReminderEditActivity : AppCompatActivity() {
     private var reminderId: Long = 0
     private var isEditMode: Boolean = false
     private var existingCalendarEventIds: String = ""
+    private var enableAppNotification: Boolean = true
+    private var enableCalendarSync: Boolean = true
+
+    companion object {
+        private const val REQUEST_NOTIFICATION_PERMISSION = 4001
+        private const val REQUEST_CALENDAR_PERMISSION = 4002
+    }
 
     private var selectedStartDate: String = ""
     private var selectedEndDate: String? = null
@@ -83,6 +94,10 @@ class MedicineReminderEditActivity : AppCompatActivity() {
         binding.etDosage.hint = "例如：1"
         binding.etUnit.hint = "例如：片、粒、ml"
         binding.etNotes.hint = "其他备注信息（选填）"
+
+        // 提醒方式开关默认值
+        binding.switchAppNotification.isChecked = true
+        binding.switchCalendarSync.isChecked = true
     }
 
     /**
@@ -229,7 +244,33 @@ class MedicineReminderEditActivity : AppCompatActivity() {
 
         // 保存按钮
         binding.btnSave.setOnClickListener {
-            saveReminder()
+            requestPermissionsAndSave()
+        }
+
+        // 系统日历开关：打开时请求日历权限
+        binding.switchCalendarSync.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                if (!hasCalendarPermission()) {
+                    ActivityCompat.requestPermissions(
+                        this,
+                        arrayOf(android.Manifest.permission.READ_CALENDAR, android.Manifest.permission.WRITE_CALENDAR),
+                        REQUEST_CALENDAR_PERMISSION
+                    )
+                }
+            }
+        }
+
+        // APP通知开关：打开时请求通知权限
+        binding.switchAppNotification.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (!hasNotificationPermission()) {
+                    ActivityCompat.requestPermissions(
+                        this,
+                        arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
+                        REQUEST_NOTIFICATION_PERMISSION
+                    )
+                }
+            }
         }
 
         // 取消按钮
@@ -299,6 +340,9 @@ class MedicineReminderEditActivity : AppCompatActivity() {
         val reminder = dbHelper.getMedicineReminderById(reminderId)
         if (reminder != null) {
             existingCalendarEventIds = reminder.calendarEventIds
+
+            // 提醒方式开关：根据是否已有日历事件判断
+            binding.switchCalendarSync.isChecked = reminder.calendarEventIds.isNotEmpty()
 
             // 设置药品名称
             binding.etMedicineName.setText(reminder.medicineName)
@@ -390,6 +434,70 @@ class MedicineReminderEditActivity : AppCompatActivity() {
         timePickerDialog.show()
     }
 
+    private fun requestPermissionsAndSave() {
+        enableAppNotification = binding.switchAppNotification.isChecked
+        enableCalendarSync = binding.switchCalendarSync.isChecked
+
+        if (enableCalendarSync && !hasCalendarPermission()) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(android.Manifest.permission.READ_CALENDAR, android.Manifest.permission.WRITE_CALENDAR),
+                REQUEST_CALENDAR_PERMISSION
+            )
+            return
+        }
+
+        if (enableAppNotification && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission()) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
+                REQUEST_NOTIFICATION_PERMISSION
+            )
+            return
+        }
+
+        saveReminder()
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        when (requestCode) {
+            REQUEST_CALENDAR_PERMISSION -> {
+                if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                    saveReminder()
+                } else {
+                    binding.switchCalendarSync.isChecked = false
+                    enableCalendarSync = false
+                    Toast.makeText(this, "需要日历权限才能同步到系统日历", Toast.LENGTH_SHORT).show()
+                    saveReminder()
+                }
+            }
+            REQUEST_NOTIFICATION_PERMISSION -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    saveReminder()
+                } else {
+                    binding.switchAppNotification.isChecked = false
+                    enableAppNotification = false
+                    Toast.makeText(this, "需要通知权限才能发送APP提醒", Toast.LENGTH_SHORT).show()
+                    saveReminder()
+                }
+            }
+        }
+    }
+
+    private fun hasCalendarPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED &&
+               ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_CALENDAR) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun hasNotificationPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+    }
+
     /**
      * 保存提醒
      */
@@ -479,7 +587,6 @@ class MedicineReminderEditActivity : AppCompatActivity() {
         }
 
         if (result > 0) {
-            // 获取保存后的完整提醒对象（含id）
             val savedReminder = if (isEditMode) {
                 reminder
             } else {
@@ -487,25 +594,44 @@ class MedicineReminderEditActivity : AppCompatActivity() {
             }
 
             // 调度APP通知
-            if (isEditMode) {
-                val oldReminder = reminder.copy(calendarEventIds = existingCalendarEventIds)
-                AlarmScheduler.rescheduleReminder(this, oldReminder, savedReminder)
+            if (enableAppNotification) {
+                if (isEditMode) {
+                    val oldReminder = reminder.copy(calendarEventIds = existingCalendarEventIds)
+                    AlarmScheduler.rescheduleReminder(this, oldReminder, savedReminder)
+                } else {
+                    AlarmScheduler.scheduleReminder(this, savedReminder)
+                }
             } else {
-                AlarmScheduler.scheduleReminder(this, savedReminder)
+                // 关闭APP通知时取消所有闹钟
+                if (isEditMode) {
+                    AlarmScheduler.cancelReminder(this, reminder.copy(calendarEventIds = existingCalendarEventIds))
+                }
             }
 
             // 写入系统日历
-            try {
-                val newEventIds = if (isEditMode) {
-                    CalendarHelper.updateCalendarEvents(this, savedReminder, existingCalendarEventIds)
-                } else {
-                    CalendarHelper.addCalendarEvents(this, savedReminder)
+            if (enableCalendarSync) {
+                try {
+                    val newEventIds = if (isEditMode) {
+                        CalendarHelper.updateCalendarEvents(this, savedReminder, existingCalendarEventIds)
+                    } else {
+                        CalendarHelper.addCalendarEvents(this, savedReminder)
+                    }
+                    if (newEventIds.isNotEmpty()) {
+                        dbHelper.updateMedicineReminder(savedReminder.copy(calendarEventIds = newEventIds))
+                    }
+                } catch (e: SecurityException) {
+                    Toast.makeText(this, "无日历权限，未同步到系统日历", Toast.LENGTH_SHORT).show()
                 }
-                if (newEventIds.isNotEmpty()) {
-                    dbHelper.updateMedicineReminder(savedReminder.copy(calendarEventIds = newEventIds))
+            } else {
+                // 关闭日历同步时删除已有日历事件
+                if (isEditMode && existingCalendarEventIds.isNotEmpty()) {
+                    try {
+                        CalendarHelper.deleteCalendarEvents(this, existingCalendarEventIds)
+                        dbHelper.updateMedicineReminder(savedReminder.copy(calendarEventIds = ""))
+                    } catch (e: SecurityException) {
+                        // 忽略
+                    }
                 }
-            } catch (e: SecurityException) {
-                // 无日历权限，忽略
             }
 
             Toast.makeText(

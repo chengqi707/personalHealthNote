@@ -321,6 +321,85 @@
 
             </LinearLayout>
 
+            <!-- 分隔线 -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="16dp"
+                android:background="#E0E0E0" />
+
+            <!-- 提醒方式 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="提醒方式"
+                android:textColor="@android:color/black"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <!-- APP通知开关 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="APP通知提醒"
+                    android:textColor="@android:color/black"
+                    android:textSize="14sp" />
+
+                <Switch
+                    android:id="@+id/switchAppNotification"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:text="到时间时发送系统通知"
+                android:textColor="@android:color/darker_gray"
+                android:textSize="12sp" />
+
+            <!-- 系统日历开关 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="同步到系统日历"
+                    android:textColor="@android:color/black"
+                    android:textSize="14sp" />
+
+                <Switch
+                    android:id="@+id/switchCalendarSync"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:text="写入手机日历，通过日历APP提醒"
+                android:textColor="@android:color/darker_gray"
+                android:textSize="12sp" />
+
             <!-- 备注 -->
             <TextView
                 android:layout_width="wrap_content"
