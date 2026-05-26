@@ -19,12 +19,11 @@ import com.chengqi.personalhealthnote.adapter.ImageAdapter
 import com.chengqi.personalhealthnote.database.DatabaseHelper
 import com.chengqi.personalhealthnote.databinding.ActivityMedicalRecordAddBinding
 import com.chengqi.personalhealthnote.entity.MedicalRecord
+import com.chengqi.personalhealthnote.utils.ImageCompressUtils
 import com.chengqi.personalhealthnote.utils.DialogUtils
 import com.chengqi.personalhealthnote.utils.ToastUtils
 import org.json.JSONArray
 import java.io.File
-import java.io.FileOutputStream
-import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -67,7 +66,10 @@ class MedicalRecordAddActivity : AppCompatActivity() {
         imageAdapter = ImageAdapter(
             imagePaths = selectedImages,
             onImageClick = { position ->
-                ToastUtils.show(this, "查看图片 ${position + 1}")
+                val intent = Intent(this, ImagePreviewActivity::class.java)
+                intent.putStringArrayListExtra("image_paths", ArrayList(selectedImages))
+                intent.putExtra("current_position", position)
+                startActivity(intent)
             },
             onImageDelete = { position ->
                 showDeleteImageConfirm(position)
@@ -266,21 +268,12 @@ class MedicalRecordAddActivity : AppCompatActivity() {
     }
 
     private fun copyImageToPrivateDir(uri: Uri): String? {
-        return try {
-            val inputStream: InputStream? = contentResolver.openInputStream(uri)
-            val fileName = "medical_record_${System.currentTimeMillis()}.jpg"
-            val privateDir = getDir("medical_records", MODE_PRIVATE)
-            val destFile = File(privateDir, fileName)
-            val outputStream = FileOutputStream(destFile)
-            inputStream?.copyTo(outputStream)
-            inputStream?.close()
-            outputStream.close()
-            destFile.absolutePath
-        } catch (e: Exception) {
-            e.printStackTrace()
+        val fileName = "medical_record_${System.currentTimeMillis()}.jpg"
+        val path = ImageCompressUtils.compressToPrivateDir(this, uri, "medical_records", fileName)
+        if (path == null) {
             ToastUtils.show(this, "图片处理失败")
-            null
         }
+        return path
     }
 
     private fun showDeleteImageConfirm(position: Int) {

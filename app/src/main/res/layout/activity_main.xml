@@ -83,4 +83,43 @@
         android:src="@android:drawable/ic_input_add"
         app:tint="@android:color/white" />
 
+    <!-- 批量删除操作栏 -->
+    <LinearLayout
+        android:id="@+id/layoutBatchDelete"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="horizontal"
+        android:background="?attr/colorPrimary"
+        android:padding="12dp"
+        android:visibility="gone"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/tvSelectAll"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="全选"
+            android:textColor="@android:color/white"
+            android:textSize="15sp"
+            android:paddingStart="8dp"
+            android:paddingEnd="16dp" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/tvBatchDelete"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="删除"
+            android:textColor="#FF4444"
+            android:textSize="15sp"
+            android:paddingStart="16dp"
+            android:paddingEnd="8dp" />
+
+    </LinearLayout>
+
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

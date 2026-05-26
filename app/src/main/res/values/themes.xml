@@ -21,4 +21,12 @@
 
     <!-- PopupOverlay主题 -->
     <style name="Theme.PersonalHealthNote.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
+
+    <!-- 全屏主题（图片预览等） -->
+    <style name="Theme.PersonalHealthNote.FullScreen" parent="Theme.PersonalHealthNote">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
 </resources>

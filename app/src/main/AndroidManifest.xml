@@ -68,6 +68,11 @@
             android:parentActivityName=".activity.MedicalRecordDetailActivity"
             android:exported="false"
             android:label="编辑就医记录" />
+        <activity
+            android:name=".activity.ImagePreviewActivity"
+            android:exported="false"
+            android:label="图片预览"
+            android:theme="@style/Theme.PersonalHealthNote.FullScreen" />
     </application>
 
 </manifest>

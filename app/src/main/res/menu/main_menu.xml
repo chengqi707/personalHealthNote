@@ -2,13 +2,23 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
+        android:id="@+id/action_search"
+        android:title="搜索"
+        android:icon="@android:drawable/ic_menu_search"
+        app:actionViewClass="androidx.appcompat.widget.SearchView"
+        app:showAsAction="always|collapseActionView" />
+    <item
         android:id="@+id/action_filter"
         android:title="筛选"
         android:icon="@android:drawable/ic_menu_sort_by_size"
         app:showAsAction="ifRoom" />
     <item
+        android:id="@+id/action_batch_delete"
+        android:title="批量删除"
+        android:icon="@android:drawable/ic_menu_delete"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/action_sync"
         android:title="同步"
-        android:icon="@android:drawable/ic_menu_upload"
-        app:showAsAction="ifRoom" />
+        app:showAsAction="never" />
 </menu>

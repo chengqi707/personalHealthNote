@@ -931,6 +931,31 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
     }
 
     /**
+     * 按关键词搜索就医记录（匹配医院、症状、诊断结果、医生、检查项目、药品）
+     * @param keyword 搜索关键词
+     * @return 匹配的就医记录列表
+     */
+    fun searchMedicalRecords(keyword: String): List<MedicalRecord> {
+        val records = mutableListOf<MedicalRecord>()
+        val db = readableDatabase
+        val likeKeyword = "%$keyword%"
+        val cursor = db.query(
+            TABLE_MEDICAL_RECORD,
+            null,
+            "$COLUMN_MR_HOSPITAL LIKE ? OR $COLUMN_MR_SYMPTOMS LIKE ? OR $COLUMN_MR_DIAGNOSIS_RESULT LIKE ? OR $COLUMN_MR_DOCTOR LIKE ? OR $COLUMN_MR_CHECK_ITEMS LIKE ? OR $COLUMN_MR_MEDICINES LIKE ?",
+            arrayOf(likeKeyword, likeKeyword, likeKeyword, likeKeyword, likeKeyword, likeKeyword),
+            null,
+            null,
+            "$COLUMN_CREATE_TIME DESC"
+        )
+        while (cursor.moveToNext()) {
+            records.add(cursorToMedicalRecord(cursor))
+        }
+        cursor.close()
+        return records
+    }
+
+    /**
      * 按时间范围查询就医记录
      * @param startTime 开始时间，格式：yyyy-MM-dd HH:mm
      * @param endTime 结束时间，格式：yyyy-MM-dd HH:mm

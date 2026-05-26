@@ -70,7 +70,10 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
         imageAdapter = ImageAdapter(
             imagePaths = imagePaths,
             onImageClick = { position ->
-                ToastUtils.show(this, "查看图片 ${position + 1}")
+                val intent = Intent(this, ImagePreviewActivity::class.java)
+                intent.putStringArrayListExtra("image_paths", ArrayList(imagePaths))
+                intent.putExtra("current_position", position)
+                startActivity(intent)
             },
             onImageDelete = {
                 ToastUtils.show(this, "请进入编辑模式修改图片")
