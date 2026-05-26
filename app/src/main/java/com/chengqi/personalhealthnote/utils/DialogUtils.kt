@@ -25,8 +25,8 @@ object DialogUtils {
         message: String,
         positiveText: String = "确定",
         negativeText: String = "取消",
-        onPositive: ((DialogInterface) -> Unit)? = null,
-        onNegative: ((DialogInterface) -> Unit)? = null
+        onNegative: ((DialogInterface) -> Unit)? = null,
+        onPositive: ((DialogInterface) -> Unit)? = null
     ): AlertDialog {
         return AlertDialog.Builder(context)
             .setTitle(title)
