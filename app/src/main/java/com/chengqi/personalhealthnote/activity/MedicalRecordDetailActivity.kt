@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Bundle
+import android.util.Log
 import android.view.MenuItem
 import android.view.View
 import android.widget.ScrollView
@@ -24,11 +25,12 @@ import androidx.recyclerview.widget.GridLayoutManager
 import org.json.JSONArray
 import org.json.JSONObject
 
-/**
- * 就医记录详情页
- * 按 PRD §4.3 实现
- */
 class MedicalRecordDetailActivity : AppCompatActivity() {
+
+    companion object {
+        private const val TAG = "MedicalRecordDetail"
+        const val REQUEST_EDIT_RECORD = 2001
+    }
 
     private lateinit var binding: ActivityMedicalRecordDetailBinding
     private lateinit var dbHelper: DatabaseHelper
@@ -38,11 +40,8 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
     private val imagePaths = mutableListOf<String>()
     private lateinit var imageAdapter: ImageAdapter
 
-    companion object {
-        const val REQUEST_EDIT_RECORD = 2001
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
+        Log.d(TAG, "onCreate start")
         super.onCreate(savedInstanceState)
         binding = ActivityMedicalRecordDetailBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -51,7 +50,9 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
         aiAssessmentService = AiMedicalAssessmentService()
 
         recordId = intent.getLongExtra("record_id", 0)
+        Log.d(TAG, "recordId=$recordId")
         if (recordId == 0L) {
+            Log.w(TAG, "recordId为0，finish")
             ToastUtils.show(this, "记录不存在")
             finish()
             return
@@ -60,6 +61,7 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
         initViews()
         setupListeners()
         loadRecordData()
+        Log.d(TAG, "onCreate end")
     }
 
     private fun initViews() {
@@ -84,25 +86,27 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
     }
 
     private fun setupListeners() {
-        // 删除按钮
         binding.btnDelete.setOnClickListener {
+            Log.d(TAG, "点击删除按钮")
             showDeleteConfirmDialog()
         }
 
-        // 编辑按钮
         binding.btnEdit.setOnClickListener {
+            Log.d(TAG, "点击编辑按钮")
             val intent = Intent(this, MedicalRecordEditActivity::class.java)
             intent.putExtra("record_id", recordId)
             startActivityForResult(intent, REQUEST_EDIT_RECORD)
         }
 
-        // 健康评估按钮
         binding.btnHealthAssessment.setOnClickListener {
+            Log.d(TAG, "点击生成健康评估按钮")
             if (!this::currentRecord.isInitialized) {
+                Log.w(TAG, "currentRecord未初始化")
                 ToastUtils.show(this, "记录加载中，请稍后")
                 return@setOnClickListener
             }
             if (!currentRecord.hasValidInfo()) {
+                Log.w(TAG, "记录无有效信息")
                 ToastUtils.show(this, "记录无有效信息，无法生成评估")
                 return@setOnClickListener
             }
@@ -113,12 +117,15 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
     private fun loadRecordData() {
         val record = dbHelper.getMedicalRecordById(recordId)
         if (record == null) {
+            Log.w(TAG, "loadRecordData: record为null, finish")
             ToastUtils.show(this, "记录不存在")
             finish()
             return
         }
 
         currentRecord = record
+        Log.d(TAG, "loadRecordData: 记录加载成功, id=${record.id}, hasValidInfo=${record.hasValidInfo()}, " +
+                "hasEvaluation=${!record.healthEvaluation.isNullOrEmpty()}")
 
         binding.tvMedicalTime.text = record.medicalTime
         binding.tvHospital.text = record.hospital
@@ -128,7 +135,6 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
         binding.tvCheckItems.text = record.checkItems.ifEmpty { "未填写" }
         binding.tvMedicines.text = record.medicines.ifEmpty { "未填写" }
 
-        // 加载图片
         imagePaths.clear()
         if (record.imagePaths.isNotEmpty()) {
             try {
@@ -146,7 +152,6 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
             binding.layoutImages.visibility = View.GONE
         }
 
-        // 评估按钮状态
         binding.btnHealthAssessment.isEnabled = record.hasValidInfo()
         if (!record.hasValidInfo()) {
             binding.btnHealthAssessment.setBackgroundResource(R.drawable.bg_button_disabled)
@@ -154,39 +159,45 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * 生成健康评估
-     */
     private fun generateHealthAssessment() {
-        // 检查网络
+        Log.d(TAG, "generateHealthAssessment: 开始")
+
         if (!isNetworkAvailable()) {
+            Log.w(TAG, "generateHealthAssessment: 无网络")
             ToastUtils.show(this, "网络未连接，无法生成健康评估")
             return
         }
+        Log.d(TAG, "generateHealthAssessment: 网络可用")
 
-        // 检查缓存
         if (!currentRecord.healthEvaluation.isNullOrEmpty()) {
+            Log.d(TAG, "generateHealthAssessment: 有缓存，直接弹窗")
             showAssessmentDialog(currentRecord.healthEvaluation!!, currentRecord.lifeSuggestion ?: "")
             return
         }
+        Log.d(TAG, "generateHealthAssessment: 无缓存，调用API")
 
-        // 显示加载状态
         binding.layoutLoading.visibility = View.VISIBLE
         binding.btnHealthAssessment.isEnabled = false
         binding.btnHealthAssessment.text = "评估中..."
 
-        // 调用云侧模型API
         val standardText = currentRecord.toStandardFormatText()
+        Log.d(TAG, "generateHealthAssessment: standardText长度=${standardText.length}")
         val context = this
         aiAssessmentService.assess(standardText) { success, message, healthEvaluation, lifeSuggestion ->
+            Log.d(TAG, "assess回调: success=$success, message=$message, " +
+                    "healthEvaluation=${healthEvaluation?.take(50)}, lifeSuggestion=${lifeSuggestion?.take(50)}")
             try {
                 runOnUiThread {
+                    Log.d(TAG, "assess回调 runOnUiThread: isFinishing=$isFinishing, isDestroyed=$isDestroyed")
+                    if (isFinishing || isDestroyed) {
+                        Log.w(TAG, "Activity已finishing/destroyed，跳过UI更新")
+                        return@runOnUiThread
+                    }
                     binding.layoutLoading.visibility = View.GONE
                     binding.btnHealthAssessment.isEnabled = true
                     binding.btnHealthAssessment.text = "生成健康评估"
 
                     if (success && healthEvaluation != null) {
-                        // 缓存结果到本地
                         dbHelper.updateMedicalRecordEvaluation(
                             currentRecord.id,
                             healthEvaluation,
@@ -196,21 +207,22 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
                             healthEvaluation = healthEvaluation,
                             lifeSuggestion = lifeSuggestion
                         )
+                        Log.d(TAG, "assess回调: 准备弹窗")
                         showAssessmentDialog(healthEvaluation, lifeSuggestion ?: "")
                     } else {
+                        Log.w(TAG, "assess回调: 失败, message=$message")
                         ToastUtils.show(context, message ?: "评估生成失败")
                     }
                 }
             } catch (e: Exception) {
-                android.util.Log.e("MedicalDetail", "评估回调异常: ${e.message}", e)
+                Log.e(TAG, "assess回调异常: ${e.message}", e)
             }
         }
+        Log.d(TAG, "generateHealthAssessment: assess已发起，等待回调")
     }
 
-    /**
-     * 展示评估结果弹窗
-     */
     private fun showAssessmentDialog(healthEvaluation: String, lifeSuggestion: String) {
+        Log.d(TAG, "showAssessmentDialog: 弹窗显示")
         val dialogView = layoutInflater.inflate(R.layout.dialog_health_assessment, null)
         val tvHealthEvaluation = dialogView.findViewById<TextView>(R.id.tvHealthEvaluation)
         val tvLifeSuggestion = dialogView.findViewById<TextView>(R.id.tvLifeSuggestion)
@@ -228,9 +240,6 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    /**
-     * 检查网络是否可用
-     */
     private fun isNetworkAvailable(): Boolean {
         val cm = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
         val network = cm.activeNetwork ?: return false
@@ -257,6 +266,7 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        Log.d(TAG, "onActivityResult: requestCode=$requestCode, resultCode=$resultCode")
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQUEST_EDIT_RECORD && resultCode == Activity.RESULT_OK) {
             loadRecordData()
@@ -265,8 +275,10 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        Log.d(TAG, "onOptionsItemSelected: itemId=${item.itemId}")
         return when (item.itemId) {
             android.R.id.home -> {
+                Log.d(TAG, "点击返回键，finish")
                 finish()
                 true
             }
@@ -274,7 +286,28 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
         }
     }
 
+    override fun onBackPressed() {
+        Log.d(TAG, "onBackPressed")
+        super.onBackPressed()
+    }
+
+    override fun onResume() {
+        Log.d(TAG, "onResume")
+        super.onResume()
+    }
+
+    override fun onPause() {
+        Log.d(TAG, "onPause")
+        super.onPause()
+    }
+
+    override fun onStop() {
+        Log.d(TAG, "onStop")
+        super.onStop()
+    }
+
     override fun onDestroy() {
+        Log.d(TAG, "onDestroy")
         super.onDestroy()
         dbHelper.close()
     }
