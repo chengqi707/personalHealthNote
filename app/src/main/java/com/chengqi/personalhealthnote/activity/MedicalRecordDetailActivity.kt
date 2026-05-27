@@ -98,6 +98,10 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
 
         // 健康评估按钮
         binding.btnHealthAssessment.setOnClickListener {
+            if (!this::currentRecord.isInitialized) {
+                ToastUtils.show(this, "记录加载中，请稍后")
+                return@setOnClickListener
+            }
             if (!currentRecord.hasValidInfo()) {
                 ToastUtils.show(this, "记录无有效信息，无法生成评估")
                 return@setOnClickListener
@@ -173,27 +177,32 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
 
         // 调用云侧模型API
         val standardText = currentRecord.toStandardFormatText()
+        val context = this
         aiAssessmentService.assess(standardText) { success, message, healthEvaluation, lifeSuggestion ->
-            runOnUiThread {
-                binding.layoutLoading.visibility = View.GONE
-                binding.btnHealthAssessment.isEnabled = true
-                binding.btnHealthAssessment.text = "生成健康评估"
+            try {
+                runOnUiThread {
+                    binding.layoutLoading.visibility = View.GONE
+                    binding.btnHealthAssessment.isEnabled = true
+                    binding.btnHealthAssessment.text = "生成健康评估"
 
-                if (success && healthEvaluation != null) {
-                    // 缓存结果到本地
-                    dbHelper.updateMedicalRecordEvaluation(
-                        currentRecord.id,
-                        healthEvaluation,
-                        lifeSuggestion ?: ""
-                    )
-                    currentRecord = currentRecord.copy(
-                        healthEvaluation = healthEvaluation,
-                        lifeSuggestion = lifeSuggestion
-                    )
-                    showAssessmentDialog(healthEvaluation, lifeSuggestion ?: "")
-                } else {
-                    ToastUtils.show(this, message)
+                    if (success && healthEvaluation != null) {
+                        // 缓存结果到本地
+                        dbHelper.updateMedicalRecordEvaluation(
+                            currentRecord.id,
+                            healthEvaluation,
+                            lifeSuggestion ?: ""
+                        )
+                        currentRecord = currentRecord.copy(
+                            healthEvaluation = healthEvaluation,
+                            lifeSuggestion = lifeSuggestion
+                        )
+                        showAssessmentDialog(healthEvaluation, lifeSuggestion ?: "")
+                    } else {
+                        ToastUtils.show(context, message ?: "评估生成失败")
+                    }
                 }
+            } catch (e: Exception) {
+                android.util.Log.e("MedicalDetail", "评估回调异常: ${e.message}", e)
             }
         }
     }
