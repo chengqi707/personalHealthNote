@@ -579,27 +579,27 @@ class MedicineReminderEditActivity : AppCompatActivity() {
         )
 
         // 保存到数据库
-        val result = if (isEditMode) {
-            dbHelper.updateMedicineReminder(reminder)
+        var savedReminder: MedicineReminder? = null
+        if (isEditMode) {
+            val rows = dbHelper.updateMedicineReminder(reminder)
+            if (rows > 0) savedReminder = reminder
         } else {
             val newId = dbHelper.insertMedicineReminder(reminder)
-            if (newId > 0) 1 else 0
+            if (newId > 0) {
+                savedReminder = dbHelper.getMedicineReminderById(newId) ?: reminder.copy(id = newId)
+            }
         }
 
-        if (result > 0) {
-            val savedReminder = if (isEditMode) {
-                reminder
-            } else {
-                dbHelper.getMedicineReminderById(reminder.id) ?: reminder
-            }
+        val sr = savedReminder
+        if (sr != null) {
 
             // 调度APP通知
             if (enableAppNotification) {
                 if (isEditMode) {
                     val oldReminder = reminder.copy(calendarEventIds = existingCalendarEventIds)
-                    AlarmScheduler.rescheduleReminder(this, oldReminder, savedReminder)
+                    AlarmScheduler.rescheduleReminder(this, oldReminder, sr)
                 } else {
-                    AlarmScheduler.scheduleReminder(this, savedReminder)
+                    AlarmScheduler.scheduleReminder(this, sr)
                 }
             } else {
                 // 关闭APP通知时取消所有闹钟
@@ -612,12 +612,12 @@ class MedicineReminderEditActivity : AppCompatActivity() {
             if (enableCalendarSync) {
                 try {
                     val newEventIds = if (isEditMode) {
-                        CalendarHelper.updateCalendarEvents(this, savedReminder, existingCalendarEventIds)
+                        CalendarHelper.updateCalendarEvents(this, sr, existingCalendarEventIds)
                     } else {
-                        CalendarHelper.addCalendarEvents(this, savedReminder)
+                        CalendarHelper.addCalendarEvents(this, sr)
                     }
                     if (newEventIds.isNotEmpty()) {
-                        dbHelper.updateMedicineReminder(savedReminder.copy(calendarEventIds = newEventIds))
+                        dbHelper.updateMedicineReminder(sr.copy(calendarEventIds = newEventIds))
                     }
                 } catch (e: SecurityException) {
                     Toast.makeText(this, "无日历权限，未同步到系统日历", Toast.LENGTH_SHORT).show()
@@ -627,7 +627,7 @@ class MedicineReminderEditActivity : AppCompatActivity() {
                 if (isEditMode && existingCalendarEventIds.isNotEmpty()) {
                     try {
                         CalendarHelper.deleteCalendarEvents(this, existingCalendarEventIds)
-                        dbHelper.updateMedicineReminder(savedReminder.copy(calendarEventIds = ""))
+                        dbHelper.updateMedicineReminder(sr.copy(calendarEventIds = ""))
                     } catch (e: SecurityException) {
                         // 忽略
                     }

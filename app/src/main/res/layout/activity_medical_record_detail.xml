@@ -43,7 +43,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="就医时间"
-                android:textColor="#666666"
+                android:textColor="@color/textSecondary"
                 android:textSize="14sp" />
 
             <TextView
@@ -53,7 +53,7 @@
                 android:layout_marginTop="4dp"
                 android:layout_marginBottom="12dp"
                 android:text="2024-05-20 14:30"
-                android:textColor="#333333"
+                android:textColor="@color/textPrimary"
                 android:textSize="15sp" />
 
             <!-- 就诊医院 -->
@@ -61,7 +61,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="就诊医院"
-                android:textColor="#666666"
+                android:textColor="@color/textSecondary"
                 android:textSize="14sp" />
 
             <TextView
@@ -71,7 +71,7 @@
                 android:layout_marginTop="4dp"
                 android:layout_marginBottom="12dp"
                 android:text="XX市第一人民医院"
-                android:textColor="#333333"
+                android:textColor="@color/textPrimary"
                 android:textSize="15sp" />
 
             <!-- 接诊医生 -->
@@ -79,7 +79,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="接诊医生"
-                android:textColor="#666666"
+                android:textColor="@color/textSecondary"
                 android:textSize="14sp" />
 
             <TextView
@@ -89,7 +89,7 @@
                 android:layout_marginTop="4dp"
                 android:layout_marginBottom="12dp"
                 android:text="张三 内科"
-                android:textColor="#333333"
+                android:textColor="@color/textPrimary"
                 android:textSize="15sp" />
 
             <!-- 症状描述 -->
@@ -97,7 +97,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="症状描述"
-                android:textColor="#666666"
+                android:textColor="@color/textSecondary"
                 android:textSize="14sp" />
 
             <TextView
@@ -107,7 +107,7 @@
                 android:layout_marginTop="4dp"
                 android:layout_marginBottom="12dp"
                 android:text="发烧、咳嗽、头晕"
-                android:textColor="#333333"
+                android:textColor="@color/textPrimary"
                 android:textSize="15sp"
                 android:lineSpacingMultiplier="1.5" />
 
@@ -116,7 +116,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="就诊结果"
-                android:textColor="#666666"
+                android:textColor="@color/textSecondary"
                 android:textSize="14sp" />
 
             <TextView
@@ -126,7 +126,7 @@
                 android:layout_marginTop="4dp"
                 android:layout_marginBottom="12dp"
                 android:text="感冒"
-                android:textColor="#333333"
+                android:textColor="@color/textPrimary"
                 android:textSize="15sp"
                 android:lineSpacingMultiplier="1.5" />
 
@@ -135,7 +135,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="检查项目"
-                android:textColor="#666666"
+                android:textColor="@color/textSecondary"
                 android:textSize="14sp" />
 
             <TextView
@@ -145,7 +145,7 @@
                 android:layout_marginTop="4dp"
                 android:layout_marginBottom="12dp"
                 android:text="血常规、胸片、心电图"
-                android:textColor="#333333"
+                android:textColor="@color/textPrimary"
                 android:textSize="15sp"
                 android:lineSpacingMultiplier="1.5" />
 
@@ -154,7 +154,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="药品清单"
-                android:textColor="#666666"
+                android:textColor="@color/textSecondary"
                 android:textSize="14sp" />
 
             <TextView
@@ -164,7 +164,7 @@
                 android:layout_marginTop="4dp"
                 android:layout_marginBottom="16dp"
                 android:text="布洛芬 每日3次，每次1片"
-                android:textColor="#333333"
+                android:textColor="@color/textPrimary"
                 android:textSize="15sp"
                 android:lineSpacingMultiplier="1.5" />
 
@@ -181,7 +181,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="病历卡照片"
-                    android:textColor="#666666"
+                    android:textColor="@color/textSecondary"
                     android:textSize="14sp" />
 
                 <androidx.recyclerview.widget.RecyclerView
@@ -225,7 +225,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="评估中..."
-                    android:textColor="#666666"
+                    android:textColor="@color/textSecondary"
                     android:textSize="14sp" />
 
             </LinearLayout>

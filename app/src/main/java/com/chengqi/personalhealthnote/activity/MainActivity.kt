@@ -64,6 +64,7 @@ class MainActivity : AppCompatActivity() {
         setupRecyclerViews()
         setupTabLayout()
         setupListeners()
+        setupBackPressedHandler()
         loadData()
     }
 
@@ -413,7 +414,11 @@ class MainActivity : AppCompatActivity() {
                     e.printStackTrace()
                 }
                 try {
-                    CalendarHelper.deleteCalendarEvents(this, reminder.calendarEventIds)
+                    if (reminder.calendarEventIds.isNotEmpty()) {
+                        CalendarHelper.deleteCalendarEvents(this, reminder.calendarEventIds)
+                    } else {
+                        CalendarHelper.deleteCalendarEventsByMedicineName(this, reminder.medicineName)
+                    }
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
@@ -516,6 +521,23 @@ class MainActivity : AppCompatActivity() {
         } else {
             super.onBackPressed()
         }
+    }
+
+    private fun setupBackPressedHandler() {
+        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (medicalRecordAdapter.isInSelectionMode()) {
+                    exitSelectionMode()
+                } else if (currentSearchQuery.isNotEmpty()) {
+                    currentSearchQuery = ""
+                    searchMenuItem?.collapseActionView()
+                    loadMedicalRecords()
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                }
+            }
+        })
     }
 
     private fun showFilterDialog() {

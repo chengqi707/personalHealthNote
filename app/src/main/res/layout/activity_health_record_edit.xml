@@ -37,7 +37,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="记录日期 *"
-                android:textColor="@android:color/black"
+                android:textColor="@color/textPrimary"
                 android:textSize="14sp"
                 android:textStyle="bold" />
 
@@ -72,14 +72,14 @@
                         android:layout_marginStart="12dp"
                         android:layout_weight="1"
                         android:text="选择日期"
-                        android:textColor="@android:color/black"
+                        android:textColor="@color/textPrimary"
                         android:textSize="16sp" />
 
                     <ImageView
                         android:layout_width="20dp"
                         android:layout_height="20dp"
                         android:src="@drawable/ic_arrow_right"
-                        app:tint="@android:color/darker_gray" />
+                        app:tint="@color/textSecondary" />
 
                 </LinearLayout>
 
@@ -91,7 +91,7 @@
                 android:layout_height="1dp"
                 android:layout_marginTop="16dp"
                 android:layout_marginBottom="16dp"
-                android:background="#E0E0E0" />
+                android:background="@color/divider" />
 
             <!-- 体重 -->
             <LinearLayout
@@ -109,7 +109,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="体重"
-                        android:textColor="@android:color/black"
+                        android:textColor="@color/textPrimary"
                         android:textSize="14sp"
                         android:textStyle="bold" />
 
@@ -139,7 +139,7 @@
                     android:layout_marginStart="8dp"
                     android:layout_marginBottom="16dp"
                     android:text="kg"
-                    android:textColor="@android:color/darker_gray"
+                    android:textColor="@color/textSecondary"
                     android:textSize="16sp" />
 
             </LinearLayout>
@@ -155,7 +155,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="血压"
-                    android:textColor="@android:color/black"
+                    android:textColor="@color/textPrimary"
                     android:textSize="14sp"
                     android:textStyle="bold" />
 
@@ -190,7 +190,7 @@
                     android:layout_gravity="center_vertical"
                     android:layout_marginHorizontal="8dp"
                     android:text="/"
-                    android:textColor="@android:color/darker_gray"
+                    android:textColor="@color/textSecondary"
                     android:textSize="20sp" />
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -217,7 +217,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
                 android:text="mmHg"
-                android:textColor="@android:color/darker_gray"
+                android:textColor="@color/textSecondary"
                 android:textSize="12sp" />
 
             <!-- 心率和血糖 -->
@@ -239,7 +239,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="心率"
-                        android:textColor="@android:color/black"
+                        android:textColor="@color/textPrimary"
                         android:textSize="14sp"
                         android:textStyle="bold" />
 
@@ -265,7 +265,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
                         android:text="次/分钟"
-                        android:textColor="@android:color/darker_gray"
+                        android:textColor="@color/textSecondary"
                         android:textSize="12sp" />
 
                 </LinearLayout>
@@ -282,7 +282,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="血糖"
-                        android:textColor="@android:color/black"
+                        android:textColor="@color/textPrimary"
                         android:textSize="14sp"
                         android:textStyle="bold" />
 
@@ -308,7 +308,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
                         android:text="mmol/L"
-                        android:textColor="@android:color/darker_gray"
+                        android:textColor="@color/textSecondary"
                         android:textSize="12sp" />
 
                 </LinearLayout>
@@ -334,7 +334,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="睡眠"
-                        android:textColor="@android:color/black"
+                        android:textColor="@color/textPrimary"
                         android:textSize="14sp"
                         android:textStyle="bold" />
 
@@ -360,7 +360,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
                         android:text="小时"
-                        android:textColor="@android:color/darker_gray"
+                        android:textColor="@color/textSecondary"
                         android:textSize="12sp" />
 
                 </LinearLayout>
@@ -377,7 +377,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="饮水"
-                        android:textColor="@android:color/black"
+                        android:textColor="@color/textPrimary"
                         android:textSize="14sp"
                         android:textStyle="bold" />
 
@@ -403,7 +403,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
                         android:text="ml"
-                        android:textColor="@android:color/darker_gray"
+                        android:textColor="@color/textSecondary"
                         android:textSize="12sp" />
 
                 </LinearLayout>
@@ -420,7 +420,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="步数"
-                        android:textColor="@android:color/black"
+                        android:textColor="@color/textPrimary"
                         android:textSize="14sp"
                         android:textStyle="bold" />
 
@@ -446,7 +446,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
                         android:text="步"
-                        android:textColor="@android:color/darker_gray"
+                        android:textColor="@color/textSecondary"
                         android:textSize="12sp" />
 
                 </LinearLayout>
@@ -459,7 +459,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:text="备注"
-                android:textColor="@android:color/black"
+                android:textColor="@color/textPrimary"
                 android:textSize="14sp"
                 android:textStyle="bold" />
 
@@ -488,7 +488,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:text="就诊/检查单据"
-                android:textColor="@android:color/black"
+                android:textColor="@color/textPrimary"
                 android:textSize="14sp"
                 android:textStyle="bold" />
 
@@ -528,9 +528,9 @@
                     android:layout_marginEnd="8dp"
                     android:layout_weight="1"
                     android:text="取消"
-                    android:textColor="@android:color/darker_gray"
+                    android:textColor="@color/textSecondary"
                     android:textSize="16sp"
-                    app:backgroundTint="#F5F5F5"
+                    app:backgroundTint="@color/buttonSecondaryBg"
                     app:cornerRadius="8dp" />
 
                 <com.google.android.material.button.MaterialButton

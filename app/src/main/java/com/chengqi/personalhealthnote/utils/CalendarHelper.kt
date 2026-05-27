@@ -56,16 +56,41 @@ object CalendarHelper {
         if (calendarEventIds.isEmpty()) return
         try {
             val jsonArray = JSONArray(calendarEventIds)
+            if (jsonArray.length() == 0) return
             val resolver = context.contentResolver
             for (i in 0 until jsonArray.length()) {
                 val eventId = jsonArray.getLong(i)
                 val eventUri = ContentUris.withAppendedId(
                     CalendarContract.Events.CONTENT_URI, eventId
                 )
-                resolver.delete(eventUri, null, null)
+                val deleted = resolver.delete(eventUri, null, null)
+                android.util.Log.d("CalendarHelper", "删除日历事件 eventId=$eventId, deleted=$deleted")
             }
+        } catch (e: SecurityException) {
+            android.util.Log.e("CalendarHelper", "删除日历事件失败：无日历权限", e)
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.e("CalendarHelper", "删除日历事件失败", e)
+        }
+    }
+
+    /**
+     * 通过药品名称删除日历事件（兜底方案）
+     * 当calendarEventIds为空时，按标题匹配删除
+     */
+    fun deleteCalendarEventsByMedicineName(context: Context, medicineName: String) {
+        try {
+            val resolver = context.contentResolver
+            val title = "用药提醒：$medicineName"
+            val deleted = resolver.delete(
+                CalendarContract.Events.CONTENT_URI,
+                "${CalendarContract.Events.TITLE} = ?",
+                arrayOf(title)
+            )
+            android.util.Log.d("CalendarHelper", "按标题删除日历事件 title=$title, deleted=$deleted")
+        } catch (e: SecurityException) {
+            android.util.Log.e("CalendarHelper", "按标题删除日历事件失败：无日历权限", e)
+        } catch (e: Exception) {
+            android.util.Log.e("CalendarHelper", "按标题删除日历事件失败", e)
         }
     }
 

@@ -15,7 +15,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="健康状态评估"
-            android:textColor="#333333"
+            android:textColor="@color/textPrimary"
             android:textSize="15sp"
             android:textStyle="bold" />
 
@@ -25,7 +25,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:layout_marginBottom="12dp"
-            android:textColor="#333333"
+            android:textColor="@color/textPrimary"
             android:textSize="14sp"
             android:lineSpacingMultiplier="1.5" />
 
@@ -33,7 +33,7 @@
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="#E0E0E0"
+            android:background="@color/divider"
             android:layout_marginBottom="12dp" />
 
         <!-- 生活建议模块 -->
@@ -41,7 +41,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="生活建议"
-            android:textColor="#333333"
+            android:textColor="@color/textPrimary"
             android:textSize="15sp"
             android:textStyle="bold" />
 
@@ -50,7 +50,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:textColor="#333333"
+            android:textColor="@color/textPrimary"
             android:textSize="14sp"
             android:lineSpacingMultiplier="1.5" />
 

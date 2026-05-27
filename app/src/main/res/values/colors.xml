@@ -26,4 +26,16 @@
 
     <!-- 卡片圆角背景 -->
     <color name="cardBackground">#FFFFFFFF</color>
+
+    <!-- 次要按钮背景 -->
+    <color name="buttonSecondaryBg">#FFF5F5F5</color>
+
+    <!-- 图标圆形背景 -->
+    <color name="iconCircleBg">#FFE3F2FD</color>
+
+    <!-- 评估按钮背景 -->
+    <color name="buttonAssessmentBg">#FFE8F5E9</color>
+
+    <!-- 禁用按钮背景 -->
+    <color name="buttonDisabledBg">#FFEEEEEE</color>
 </resources>

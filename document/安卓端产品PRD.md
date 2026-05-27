@@ -372,3 +372,21 @@ data class MedicalRecord(
    - 开关提醒：注册/取消闹钟（日历事件保留，由系统日历管理）
 4. **开机重注册**：新增 BootReceiver 监听 BOOT_COMPLETED，开机后重新注册所有启用的提醒闹钟
 5. **权限**：新增 READ_CALENDAR、WRITE_CALENDAR、RECEIVE_BOOT_COMPLETED 权限
+
+### 10.8 2026年5月27日 — 深色模式适配修复 + Bug修复
+1. **深色模式文字不可见修复**：将所有布局文件中硬编码的深色文字颜色替换为主题感知颜色资源，深色模式下自动切换为浅色文字
+   - `#333333`、`@android:color/black` → `@color/textPrimary`（浅色#000000，深色#FFFFFF）
+   - `#666666`、`@android:color/darker_gray` → `@color/textSecondary`（浅色#666666，深色#B0B0B0）
+   - `#999999` → `@color/textHint`（浅色#999999，深色#808080）
+   - `#E0E0E0` 分割线 → `@color/divider`（浅色#E0E0E0，深色#333333）
+   - 影响文件：8个布局文件 + 1个item文件 + 4个drawable文件
+   - 新增深色模式颜色资源：buttonSecondaryBg、iconCircleBg、buttonAssessmentBg、buttonDisabledBg
+   - spinner_background.xml：白色背景→@color/surface，边框→@color/divider，箭头→@color/textSecondary
+2. **删除用药提醒日历事件未同步修复**：修复新增用药提醒时calendarEventIds未写入数据库，导致删除时日历事件无法清除
+   - 根因：新增模式reminder.id=0，insert后未使用数据库返回的newId查询真实记录，导致updateMedicineReminder匹配不到任何行
+   - 修复：insert后用newId查询数据库获取真实savedReminder，确保后续updateMedicineReminder正确写入calendarEventIds
+   - 兜底：CalendarHelper新增deleteCalendarEventsByMedicineName方法，当calendarEventIds为空时按标题匹配删除日历事件
+   - 删除逻辑：优先用calendarEventIds删除，为空时fallback到按药品名称匹配删除
+3. **批量删除模式返回键退出应用修复**：修复批量删除模式下按返回键/侧滑直接退到桌面的问题
+   - 根因：onBackPressed()在Android 13+预测性返回手势下不一定会被调用
+   - 修复：新增OnBackPressedDispatcher回调，优先拦截批量删除模式和搜索状态下的返回操作

@@ -50,7 +50,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="基本信息"
-                        android:textColor="@android:color/black"
+                        android:textColor="@color/textPrimary"
                         android:textSize="16sp"
                         android:textStyle="bold" />
 
@@ -66,7 +66,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="记录日期"
-                            android:textColor="@android:color/darker_gray"
+                            android:textColor="@color/textSecondary"
                             android:textSize="14sp" />
 
                         <TextView
@@ -74,7 +74,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="2024-01-01"
-                            android:textColor="@android:color/black"
+                            android:textColor="@color/textPrimary"
                             android:textSize="14sp"
                             android:textStyle="bold" />
 
@@ -92,7 +92,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="体重"
-                            android:textColor="@android:color/darker_gray"
+                            android:textColor="@color/textSecondary"
                             android:textSize="14sp" />
 
                         <TextView
@@ -100,7 +100,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="- kg"
-                            android:textColor="@android:color/black"
+                            android:textColor="@color/textPrimary"
                             android:textSize="14sp" />
 
                     </LinearLayout>
@@ -117,7 +117,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="血压"
-                            android:textColor="@android:color/darker_gray"
+                            android:textColor="@color/textSecondary"
                             android:textSize="14sp" />
 
                         <TextView
@@ -125,7 +125,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="- mmHg"
-                            android:textColor="@android:color/black"
+                            android:textColor="@color/textPrimary"
                             android:textSize="14sp" />
 
                     </LinearLayout>
@@ -142,7 +142,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="心率"
-                            android:textColor="@android:color/darker_gray"
+                            android:textColor="@color/textSecondary"
                             android:textSize="14sp" />
 
                         <TextView
@@ -150,7 +150,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="- 次/分"
-                            android:textColor="@android:color/black"
+                            android:textColor="@color/textPrimary"
                             android:textSize="14sp" />
 
                     </LinearLayout>
@@ -167,7 +167,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="血糖"
-                            android:textColor="@android:color/darker_gray"
+                            android:textColor="@color/textSecondary"
                             android:textSize="14sp" />
 
                         <TextView
@@ -175,7 +175,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="- mmol/L"
-                            android:textColor="@android:color/black"
+                            android:textColor="@color/textPrimary"
                             android:textSize="14sp" />
 
                     </LinearLayout>
@@ -192,7 +192,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="睡眠时长"
-                            android:textColor="@android:color/darker_gray"
+                            android:textColor="@color/textSecondary"
                             android:textSize="14sp" />
 
                         <TextView
@@ -200,7 +200,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="- 小时"
-                            android:textColor="@android:color/black"
+                            android:textColor="@color/textPrimary"
                             android:textSize="14sp" />
 
                     </LinearLayout>
@@ -217,7 +217,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="饮水量"
-                            android:textColor="@android:color/darker_gray"
+                            android:textColor="@color/textSecondary"
                             android:textSize="14sp" />
 
                         <TextView
@@ -225,7 +225,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="- ml"
-                            android:textColor="@android:color/black"
+                            android:textColor="@color/textPrimary"
                             android:textSize="14sp" />
 
                     </LinearLayout>
@@ -242,7 +242,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="步数"
-                            android:textColor="@android:color/darker_gray"
+                            android:textColor="@color/textSecondary"
                             android:textSize="14sp" />
 
                         <TextView
@@ -250,7 +250,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="- 步"
-                            android:textColor="@android:color/black"
+                            android:textColor="@color/textPrimary"
                             android:textSize="14sp" />
 
                     </LinearLayout>
@@ -266,7 +266,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="备注信息"
-                            android:textColor="@android:color/darker_gray"
+                            android:textColor="@color/textSecondary"
                             android:textSize="14sp" />
 
                         <TextView
@@ -275,7 +275,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
                             android:text="暂无备注"
-                            android:textColor="@android:color/black"
+                            android:textColor="@color/textPrimary"
                             android:textSize="14sp" />
 
                     </LinearLayout>
@@ -303,7 +303,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="就诊单据"
-                        android:textColor="@android:color/black"
+                        android:textColor="@color/textPrimary"
                         android:textSize="16sp"
                         android:textStyle="bold" />
 
@@ -352,7 +352,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="AI健康评估报告"
-                        android:textColor="@android:color/black"
+                        android:textColor="@color/textPrimary"
                         android:textSize="16sp"
                         android:textStyle="bold" />
 
@@ -369,7 +369,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="健康评分"
-                            android:textColor="@android:color/darker_gray"
+                            android:textColor="@color/textSecondary"
                             android:textSize="14sp" />
 
                         <TextView
@@ -386,7 +386,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginStart="4dp"
                             android:text="/100"
-                            android:textColor="@android:color/darker_gray"
+                            android:textColor="@color/textSecondary"
                             android:textSize="14sp" />
 
                     </LinearLayout>
@@ -402,7 +402,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="整体评估"
-                            android:textColor="@android:color/darker_gray"
+                            android:textColor="@color/textSecondary"
                             android:textSize="14sp" />
 
                         <TextView
@@ -411,7 +411,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
                             android:text="整体健康状况良好，建议继续保持良好的生活习惯。"
-                            android:textColor="@android:color/black"
+                            android:textColor="@color/textPrimary"
                             android:textSize="14sp" />
 
                     </LinearLayout>

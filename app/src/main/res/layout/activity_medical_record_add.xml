@@ -44,7 +44,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="就医时间 *"
-                android:textColor="#333333"
+                android:textColor="@color/textPrimary"
                 android:textSize="14sp" />
 
             <TextView
@@ -54,8 +54,8 @@
                 android:gravity="center_vertical"
                 android:hint="请选择就医时间"
                 android:textSize="15sp"
-                android:textColor="#333333"
-                android:textColorHint="#999999"
+                android:textColor="@color/textPrimary"
+                android:textColorHint="@color/textHint"
                 android:background="@drawable/bg_edit_text"
                 android:paddingStart="12dp"
                 android:paddingEnd="12dp"
@@ -69,7 +69,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="就诊医院 *"
-                android:textColor="#333333"
+                android:textColor="@color/textPrimary"
                 android:textSize="14sp" />
 
             <com.google.android.material.textfield.TextInputEditText
@@ -91,7 +91,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="接诊医生"
-                android:textColor="#333333"
+                android:textColor="@color/textPrimary"
                 android:textSize="14sp" />
 
             <com.google.android.material.textfield.TextInputEditText
@@ -113,7 +113,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="症状描述 *"
-                android:textColor="#333333"
+                android:textColor="@color/textPrimary"
                 android:textSize="14sp" />
 
             <com.google.android.material.textfield.TextInputEditText
@@ -141,7 +141,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="就诊结果 *"
-                android:textColor="#333333"
+                android:textColor="@color/textPrimary"
                 android:textSize="14sp" />
 
             <com.google.android.material.textfield.TextInputEditText
@@ -169,7 +169,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="检查项目"
-                android:textColor="#333333"
+                android:textColor="@color/textPrimary"
                 android:textSize="14sp" />
 
             <com.google.android.material.textfield.TextInputEditText
@@ -197,7 +197,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="药品清单"
-                android:textColor="#333333"
+                android:textColor="@color/textPrimary"
                 android:textSize="14sp" />
 
             <com.google.android.material.textfield.TextInputEditText
@@ -225,7 +225,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="病历卡照片"
-                android:textColor="#333333"
+                android:textColor="@color/textPrimary"
                 android:textSize="14sp" />
 
             <androidx.recyclerview.widget.RecyclerView
