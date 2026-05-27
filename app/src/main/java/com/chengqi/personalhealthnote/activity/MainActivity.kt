@@ -513,12 +513,13 @@ class MainActivity : AppCompatActivity() {
         val batchDeleteItem = menu?.findItem(R.id.action_batch_delete)
         val syncItem = menu?.findItem(R.id.action_sync)
 
-        // 更新排序菜单标题
+        // 更新排序菜单图标和标题
         val currentSortOrder = when (binding.tabLayout.selectedTabPosition) {
             0 -> medicalRecordSortOrder
             1 -> healthRecordSortOrder
             else -> medicineReminderSortOrder
         }
+        sortItem?.setIcon(if (currentSortOrder == 0) R.drawable.ic_sort_desc else R.drawable.ic_sort_asc)
         sortItem?.title = if (currentSortOrder == 0) "排序：由近到远" else "排序：由远到近"
 
         if (medicalRecordAdapter.isInSelectionMode()) {

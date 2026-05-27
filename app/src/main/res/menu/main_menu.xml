@@ -9,9 +9,9 @@
         app:showAsAction="always|collapseActionView" />
     <item
         android:id="@+id/action_sort"
-        android:title="排序：由近到远"
-        android:icon="@android:drawable/ic_menu_sort_by_size"
-        app:showAsAction="ifRoom" />
+        android:title="排序"
+        android:icon="@drawable/ic_sort_desc"
+        app:showAsAction="always" />
     <item
         android:id="@+id/action_filter"
         android:title="筛选"

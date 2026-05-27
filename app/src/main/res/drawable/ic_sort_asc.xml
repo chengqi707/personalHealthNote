@@ -1,0 +1,10 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- 三条横线 + 向上箭头：表示由远到近 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M3,6h8v2H3zM3,11h6v2H3zM3,16h4v2H3zM17,20l4,-5h-3V4h-2v11h-3z" />
+</vector>
