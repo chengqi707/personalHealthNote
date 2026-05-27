@@ -43,6 +43,11 @@ class MainActivity : AppCompatActivity() {
     private var medicalRecordFilter = 0
     private var currentSearchQuery = ""
 
+    // 排序方向：0=由近到远(DESC)，1=由远到近(ASC)
+    private var medicalRecordSortOrder = 0
+    private var healthRecordSortOrder = 0
+    private var medicineReminderSortOrder = 0
+
     companion object {
         const val REQUEST_ADD_MEDICAL_RECORD = 1001
         const val REQUEST_EDIT_MEDICAL_RECORD = 1002
@@ -82,6 +87,9 @@ class MainActivity : AppCompatActivity() {
             override fun onTabSelected(tab: TabLayout.Tab?) {
                 exitSelectionMode()
                 currentSearchQuery = ""
+                medicalRecordSortOrder = 0
+                healthRecordSortOrder = 0
+                medicineReminderSortOrder = 0
                 when (tab?.position) {
                     0 -> showMedicalRecordTab()
                     1 -> showHealthRecordTab()
@@ -226,12 +234,37 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun toggleSortOrder() {
+        when (binding.tabLayout.selectedTabPosition) {
+            0 -> {
+                medicalRecordSortOrder = if (medicalRecordSortOrder == 0) 1 else 0
+                loadMedicalRecords()
+            }
+            1 -> {
+                healthRecordSortOrder = if (healthRecordSortOrder == 0) 1 else 0
+                loadHealthRecords()
+            }
+            2 -> {
+                medicineReminderSortOrder = if (medicineReminderSortOrder == 0) 1 else 0
+                loadMedicineReminders()
+            }
+        }
+        invalidateOptionsMenu()
+        val label = when (binding.tabLayout.selectedTabPosition) {
+            0 -> if (medicalRecordSortOrder == 0) "由近到远" else "由远到近"
+            1 -> if (healthRecordSortOrder == 0) "由近到远" else "由远到近"
+            else -> if (medicineReminderSortOrder == 0) "由近到远" else "由远到近"
+        }
+        ToastUtils.show(this, "排序：$label")
+    }
+
     private fun loadMedicalRecords() {
+        val order = if (medicalRecordSortOrder == 0) "DESC" else "ASC"
         val records = if (currentSearchQuery.isNotEmpty()) {
-            dbHelper.searchMedicalRecords(currentSearchQuery)
+            dbHelper.searchMedicalRecords(currentSearchQuery, order)
         } else {
             when (medicalRecordFilter) {
-                0 -> dbHelper.getAllMedicalRecords()
+                0 -> dbHelper.getAllMedicalRecords(order)
                 else -> {
                     val cal = Calendar.getInstance()
                     when (medicalRecordFilter) {
@@ -241,7 +274,7 @@ class MainActivity : AppCompatActivity() {
                     }
                     val startTime = dateTimeFormat.format(cal.time)
                     val endTime = dateTimeFormat.format(Calendar.getInstance().time)
-                    dbHelper.getMedicalRecordsByTimeRange(startTime, endTime)
+                    dbHelper.getMedicalRecordsByTimeRange(startTime, endTime, order)
                 }
             }
         }
@@ -264,7 +297,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadHealthRecords() {
-        val records = dbHelper.getAllHealthRecords()
+        val order = if (healthRecordSortOrder == 0) "DESC" else "ASC"
+        val records = dbHelper.getAllHealthRecords(order)
         binding.recyclerViewHealthRecords.adapter = healthRecordAdapter
         healthRecordAdapter.setData(records)
 
@@ -280,7 +314,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadMedicineReminders() {
-        val reminders = dbHelper.getAllMedicineReminders()
+        val order = if (medicineReminderSortOrder == 0) "DESC" else "ASC"
+        val reminders = dbHelper.getAllMedicineReminders(order)
         medicineReminderAdapter.setData(reminders)
 
         binding.recyclerViewHealthRecords.visibility = View.GONE
@@ -473,18 +508,29 @@ class MainActivity : AppCompatActivity() {
         }
 
         // 批量删除模式下隐藏搜索和筛选，显示全选
+        val sortItem = menu?.findItem(R.id.action_sort)
         val filterItem = menu?.findItem(R.id.action_filter)
         val batchDeleteItem = menu?.findItem(R.id.action_batch_delete)
         val syncItem = menu?.findItem(R.id.action_sync)
 
+        // 更新排序菜单标题
+        val currentSortOrder = when (binding.tabLayout.selectedTabPosition) {
+            0 -> medicalRecordSortOrder
+            1 -> healthRecordSortOrder
+            else -> medicineReminderSortOrder
+        }
+        sortItem?.title = if (currentSortOrder == 0) "排序：由近到远" else "排序：由远到近"
+
         if (medicalRecordAdapter.isInSelectionMode()) {
             searchMenuItem?.isVisible = false
+            sortItem?.isVisible = false
             filterItem?.isVisible = false
             batchDeleteItem?.isVisible = false
             syncItem?.isVisible = false
         } else {
             val isMedicalTab = binding.tabLayout.selectedTabPosition == 0
             searchMenuItem?.isVisible = isMedicalTab
+            sortItem?.isVisible = true
             filterItem?.isVisible = binding.tabLayout.selectedTabPosition == 0
             batchDeleteItem?.isVisible = binding.tabLayout.selectedTabPosition == 0
             syncItem?.isVisible = true
@@ -495,6 +541,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
+            R.id.action_sort -> {
+                toggleSortOrder()
+                true
+            }
             R.id.action_filter -> {
                 showFilterDialog()
                 true

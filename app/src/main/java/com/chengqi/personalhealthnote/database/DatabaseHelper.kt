@@ -365,7 +365,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
      * 查询所有健康记录（按日期降序）
      * @return 健康记录列表
      */
-    fun getAllHealthRecords(): List<HealthRecord> {
+    fun getAllHealthRecords(sortOrder: String = "DESC"): List<HealthRecord> {
         val records = mutableListOf<HealthRecord>()
         val db = readableDatabase
         val cursor = db.query(
@@ -375,7 +375,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             null,
             null,
             null,
-            "$COLUMN_RECORD_DATE DESC"
+            "$COLUMN_CREATE_TIME $sortOrder"
         )
         while (cursor.moveToNext()) {
             records.add(cursorToHealthRecord(cursor))
@@ -574,7 +574,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
      * 查询所有用药提醒（按创建时间降序）
      * @return 用药提醒列表
      */
-    fun getAllMedicineReminders(): List<MedicineReminder> {
+    fun getAllMedicineReminders(sortOrder: String = "DESC"): List<MedicineReminder> {
         val reminders = mutableListOf<MedicineReminder>()
         val db = readableDatabase
         val cursor = db.query(
@@ -584,7 +584,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             null,
             null,
             null,
-            "$COLUMN_CREATE_TIME DESC"
+            "$COLUMN_CREATE_TIME $sortOrder"
         )
         while (cursor.moveToNext()) {
             reminders.add(cursorToMedicineReminder(cursor))
@@ -920,7 +920,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
      * 查询所有就医记录（按创建时间倒序）
      * @return 就医记录列表
      */
-    fun getAllMedicalRecords(): List<MedicalRecord> {
+    fun getAllMedicalRecords(sortOrder: String = "DESC"): List<MedicalRecord> {
         val records = mutableListOf<MedicalRecord>()
         val db = readableDatabase
         val cursor = db.query(
@@ -930,7 +930,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             null,
             null,
             null,
-            "$COLUMN_CREATE_TIME DESC"
+            "$COLUMN_CREATE_TIME $sortOrder"
         )
         while (cursor.moveToNext()) {
             records.add(cursorToMedicalRecord(cursor))
@@ -944,7 +944,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
      * @param keyword 搜索关键词
      * @return 匹配的就医记录列表
      */
-    fun searchMedicalRecords(keyword: String): List<MedicalRecord> {
+    fun searchMedicalRecords(keyword: String, sortOrder: String = "DESC"): List<MedicalRecord> {
         val records = mutableListOf<MedicalRecord>()
         val db = readableDatabase
         val likeKeyword = "%$keyword%"
@@ -955,7 +955,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             arrayOf(likeKeyword, likeKeyword, likeKeyword, likeKeyword, likeKeyword, likeKeyword),
             null,
             null,
-            "$COLUMN_CREATE_TIME DESC"
+            "$COLUMN_CREATE_TIME $sortOrder"
         )
         while (cursor.moveToNext()) {
             records.add(cursorToMedicalRecord(cursor))
@@ -970,7 +970,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
      * @param endTime 结束时间，格式：yyyy-MM-dd HH:mm
      * @return 就医记录列表
      */
-    fun getMedicalRecordsByTimeRange(startTime: String, endTime: String): List<MedicalRecord> {
+    fun getMedicalRecordsByTimeRange(startTime: String, endTime: String, sortOrder: String = "DESC"): List<MedicalRecord> {
         val records = mutableListOf<MedicalRecord>()
         val db = readableDatabase
         val cursor = db.query(
@@ -980,7 +980,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             arrayOf(startTime, endTime),
             null,
             null,
-            "$COLUMN_CREATE_TIME DESC"
+            "$COLUMN_CREATE_TIME $sortOrder"
         )
         while (cursor.moveToNext()) {
             records.add(cursorToMedicalRecord(cursor))
