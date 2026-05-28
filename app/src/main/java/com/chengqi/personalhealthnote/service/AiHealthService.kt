@@ -91,7 +91,6 @@ class AiHealthService {
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 e.printStackTrace()
-                Log.e("AiHealthService", "网络请求失败: ${e.message}", e)
                 callback(false, "请求失败", null) // 统一错误提示
             }
 
@@ -100,13 +99,12 @@ class AiHealthService {
                     try {
                         if (!response.isSuccessful) {
                             val errorBody = response.body?.string() ?: "未知错误"
-                            Log.e("AiHealthService", "API调用失败: code=${response.code}, message=${response.message}, error=$errorBody")
-                            callback(false, "请求失败", null) // 统一错误提示
+                            Log.e("AiHealthService", "接口异常(${response.code})：${errorBody.take(200)}")
+                            callback(false, "接口异常(${response.code})", null) // 统一错误提示
                             return
                         }
 
                         val responseBody = response.body?.string()
-                        Log.d("AiHealthService", "API返回内容: $responseBody")
 
                         // 空值判断
                         if (responseBody.isNullOrEmpty()) {
@@ -135,8 +133,7 @@ class AiHealthService {
                         callback(true, "评估完成", assessmentResult)
                     } catch (e: Exception) {
                         e.printStackTrace()
-                        Log.e("AiHealthService", "结果解析失败: ${e.message}", e)
-                        callback(false, "请求失败", null) // 统一错误提示
+                        callback(false, "评估结果解析失败，请重试", null) // 统一错误提示
                     }
                 }
             }

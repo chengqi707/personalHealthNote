@@ -390,3 +390,26 @@ data class MedicalRecord(
 3. **批量删除模式返回键退出应用修复**：修复批量删除模式下按返回键/侧滑直接退到桌面的问题
    - 根因：onBackPressed()在Android 13+预测性返回手势下不一定会被调用
    - 修复：新增OnBackPressedDispatcher回调，优先拦截批量删除模式和搜索状态下的返回操作
+
+### 10.9 2026年5月28日 — P0-P3功能迭代 + 日志清理
+1. **健康统计看板（P0）**：新增"统计"Tab，展示健康数据趋势和汇总信息
+   - 新增 StatisticsActivity：时间范围选择（7天/30天/90天/全部）、指标趋势折线图、汇总统计卡片、常见症状Top5排行
+   - 新增 TrendChartView：自定义Canvas折线图View，支持单线和双线（血压收缩/舒张），自动计算Y轴范围，支持填充区域
+   - DatabaseHelper新增7个统计查询方法：getWeightTrend、getBloodPressureTrend、getBloodSugarTrend、getTopSymptoms、getMedicalRecordCount、getHealthRecordCount、getMedicineTypeCount
+   - MainActivity新增第4个Tab"统计"，点击跳转StatisticsActivity
+   - 统计Tab下隐藏排序、筛选、批量删除等菜单项，隐藏FAB
+2. **全局搜索扩展（P1）**：搜索功能从仅就医记录扩展到全部3个Tab
+   - DatabaseHelper新增 searchHealthRecords（搜索日期、备注）和 searchMedicineReminders（搜索药品名、剂量、备注）
+   - SearchView在所有Tab可见，queryHint随Tab切换动态变更
+   - 搜索回调按Tab分发到对应的load方法，退出搜索时清空并重载当前Tab
+3. **数据导出分享（P2）**：就医记录和健康记录详情页新增"分享"按钮
+   - 新增 ShareUtils：将记录文本内容渲染为图片（Canvas绘制标题+内容+水印），通过FileProvider+Intent.ACTION_SEND分享
+   - 新增 FileProvider配置（file_paths.xml），cache/share目录
+   - 就医记录详情页分享：就医时间、医院、医生、症状、诊断、药品、AI评估结果
+   - 健康记录详情页分享：日期、体重、血压、心率、血糖、睡眠、饮水、步数、备注
+4. **设置页面（P3）**：新增SettingsActivity，作为APP统一配置入口
+   - 账号管理：登录/退出登录（复用TokenManager）
+   - 数据管理：清除缓存（显示缓存大小）、数据库备份（复制db到Downloads目录）
+   - 关于：版本号（读BuildConfig）、隐私政策（弹窗展示）
+   - 主菜单overflow新增"设置"入口
+5. **调试日志清理**：移除MedicalRecordDetailActivity、AiHealthService、AiMedicalAssessmentService中所有Log.d调试日志，仅保留Log.e错误日志

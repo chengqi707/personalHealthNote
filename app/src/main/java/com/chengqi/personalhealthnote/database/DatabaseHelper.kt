@@ -20,7 +20,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
 ) {
 
     companion object {
-        private const val DATABASE_NAME = "health_note.db"
+        const val DATABASE_NAME = "health_note.db"
         private const val DATABASE_VERSION = 6
 
         // 健康记录表
@@ -458,6 +458,32 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         }
     }
 
+    /**
+     * 搜索健康记录
+     * @param keyword 搜索关键词
+     * @param sortOrder 排序方式，DESC或ASC
+     * @return 匹配的健康记录列表
+     */
+    fun searchHealthRecords(keyword: String, sortOrder: String = "DESC"): List<HealthRecord> {
+        val records = mutableListOf<HealthRecord>()
+        val db = readableDatabase
+        val likeKeyword = "%$keyword%"
+        val cursor = db.query(
+            TABLE_HEALTH_RECORD,
+            null,
+            "$COLUMN_DELETE_FLAG = 0 AND ($COLUMN_RECORD_DATE LIKE ? OR $COLUMN_NOTES LIKE ?)",
+            arrayOf(likeKeyword, likeKeyword),
+            null,
+            null,
+            "$COLUMN_CREATE_TIME $sortOrder"
+        )
+        while (cursor.moveToNext()) {
+            records.add(cursorToHealthRecord(cursor))
+        }
+        cursor.close()
+        return records
+    }
+
     // ==================== 用药提醒 CRUD 操作 ====================
 
     /**
@@ -740,6 +766,144 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         return statistics
     }
 
+    /**
+     * 获取体重趋势数据
+     * @param days 最近天数
+     * @return 日期→体重列表
+     */
+    fun getWeightTrend(days: Int): List<Pair<String, Float>> {
+        val result = mutableListOf<Pair<String, Float>>()
+        val db = readableDatabase
+        val cutoffDate = getCutoffDate(days)
+        val cursor = db.rawQuery(
+            "SELECT $COLUMN_RECORD_DATE, $COLUMN_WEIGHT FROM $TABLE_HEALTH_RECORD " +
+            "WHERE $COLUMN_RECORD_DATE >= ? AND $COLUMN_WEIGHT > 0 AND $COLUMN_DELETE_FLAG = 0 " +
+            "ORDER BY $COLUMN_RECORD_DATE ASC",
+            arrayOf(cutoffDate)
+        )
+        while (cursor.moveToNext()) {
+            result.add(Pair(cursor.getString(0), cursor.getFloat(1)))
+        }
+        cursor.close()
+        return result
+    }
+
+    /**
+     * 获取血压趋势数据
+     * @param days 最近天数
+     * @return 日期→(收缩压, 舒张压)列表
+     */
+    fun getBloodPressureTrend(days: Int): List<Triple<String, Int, Int>> {
+        val result = mutableListOf<Triple<String, Int, Int>>()
+        val db = readableDatabase
+        val cutoffDate = getCutoffDate(days)
+        val cursor = db.rawQuery(
+            "SELECT $COLUMN_RECORD_DATE, $COLUMN_SYSTOLIC_PRESSURE, $COLUMN_DIASTOLIC_PRESSURE FROM $TABLE_HEALTH_RECORD " +
+            "WHERE $COLUMN_RECORD_DATE >= ? AND $COLUMN_SYSTOLIC_PRESSURE > 0 AND $COLUMN_DELETE_FLAG = 0 " +
+            "ORDER BY $COLUMN_RECORD_DATE ASC",
+            arrayOf(cutoffDate)
+        )
+        while (cursor.moveToNext()) {
+            result.add(Triple(cursor.getString(0), cursor.getInt(1), cursor.getInt(2)))
+        }
+        cursor.close()
+        return result
+    }
+
+    /**
+     * 获取血糖趋势数据
+     * @param days 最近天数
+     * @return 日期→血糖列表
+     */
+    fun getBloodSugarTrend(days: Int): List<Pair<String, Float>> {
+        val result = mutableListOf<Pair<String, Float>>()
+        val db = readableDatabase
+        val cutoffDate = getCutoffDate(days)
+        val cursor = db.rawQuery(
+            "SELECT $COLUMN_RECORD_DATE, $COLUMN_BLOOD_SUGAR FROM $TABLE_HEALTH_RECORD " +
+            "WHERE $COLUMN_RECORD_DATE >= ? AND $COLUMN_BLOOD_SUGAR > 0 AND $COLUMN_DELETE_FLAG = 0 " +
+            "ORDER BY $COLUMN_RECORD_DATE ASC",
+            arrayOf(cutoffDate)
+        )
+        while (cursor.moveToNext()) {
+            result.add(Pair(cursor.getString(0), cursor.getFloat(1)))
+        }
+        cursor.close()
+        return result
+    }
+
+    /**
+     * 获取常见症状Top N
+     * @param limit 取前N个
+     * @return 症状→次数列表
+     */
+    fun getTopSymptoms(limit: Int = 5): List<Pair<String, Int>> {
+        val result = mutableListOf<Pair<String, Int>>()
+        val db = readableDatabase
+        val cursor = db.rawQuery(
+            "SELECT $COLUMN_MR_SYMPTOMS, COUNT(*) as cnt FROM $TABLE_MEDICAL_RECORD " +
+            "GROUP BY $COLUMN_MR_SYMPTOMS ORDER BY cnt DESC LIMIT ?",
+            arrayOf(limit.toString())
+        )
+        while (cursor.moveToNext()) {
+            result.add(Pair(cursor.getString(0), cursor.getInt(1)))
+        }
+        cursor.close()
+        return result
+    }
+
+    /**
+     * 获取就医记录总数
+     */
+    fun getMedicalRecordCount(): Int {
+        val db = readableDatabase
+        val cursor = db.rawQuery(
+            "SELECT COUNT(*) FROM $TABLE_MEDICAL_RECORD",
+            null
+        )
+        val count = if (cursor.moveToFirst()) cursor.getInt(0) else 0
+        cursor.close()
+        return count
+    }
+
+    /**
+     * 获取健康记录总数
+     */
+    fun getHealthRecordCount(): Int {
+        val db = readableDatabase
+        val cursor = db.rawQuery(
+            "SELECT COUNT(*) FROM $TABLE_HEALTH_RECORD WHERE $COLUMN_DELETE_FLAG = 0",
+            null
+        )
+        val count = if (cursor.moveToFirst()) cursor.getInt(0) else 0
+        cursor.close()
+        return count
+    }
+
+    /**
+     * 获取不同药品数
+     */
+    fun getMedicineTypeCount(): Int {
+        val db = readableDatabase
+        val cursor = db.rawQuery(
+            "SELECT COUNT(DISTINCT $COLUMN_MEDICINE_NAME) FROM $TABLE_MEDICINE_REMINDER WHERE $COLUMN_DELETE_FLAG = 0",
+            null
+        )
+        val count = if (cursor.moveToFirst()) cursor.getInt(0) else 0
+        cursor.close()
+        return count
+    }
+
+    /**
+     * 计算截止日期字符串
+     */
+    private fun getCutoffDate(days: Int): String {
+        val cal = java.util.Calendar.getInstance()
+        cal.add(java.util.Calendar.DAY_OF_YEAR, -days)
+        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+        return sdf.format(cal.time)
+    }
+
 
     /**
      * 获取用药提醒数量
@@ -769,6 +933,32 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         val count = if (cursor.moveToFirst()) cursor.getInt(0) else 0
         cursor.close()
         return count
+    }
+
+    /**
+     * 搜索用药提醒
+     * @param keyword 搜索关键词
+     * @param sortOrder 排序方式，DESC或ASC
+     * @return 匹配的用药提醒列表
+     */
+    fun searchMedicineReminders(keyword: String, sortOrder: String = "DESC"): List<MedicineReminder> {
+        val reminders = mutableListOf<MedicineReminder>()
+        val db = readableDatabase
+        val likeKeyword = "%$keyword%"
+        val cursor = db.query(
+            TABLE_MEDICINE_REMINDER,
+            null,
+            "$COLUMN_DELETE_FLAG = 0 AND ($COLUMN_MEDICINE_NAME LIKE ? OR $COLUMN_DOSAGE LIKE ? OR $COLUMN_MEDICINE_NOTES LIKE ?)",
+            arrayOf(likeKeyword, likeKeyword, likeKeyword),
+            null,
+            null,
+            "$COLUMN_CREATE_TIME $sortOrder"
+        )
+        while (cursor.moveToNext()) {
+            reminders.add(cursorToMedicineReminder(cursor))
+        }
+        cursor.close()
+        return reminders
     }
 
     // ==================== 同步相关方法 ====================

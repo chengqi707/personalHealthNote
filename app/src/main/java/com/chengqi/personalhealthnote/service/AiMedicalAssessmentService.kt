@@ -99,7 +99,6 @@ class AiMedicalAssessmentService {
                                 return
                             }
 
-                            Log.d("AiMedicalAssessment", "响应: $responseBody")
                             val jsonObject = JSONObject(responseBody)
                             val choices = jsonObject.getJSONArray("choices")
                             val message = choices.getJSONObject(0).getJSONObject("message")

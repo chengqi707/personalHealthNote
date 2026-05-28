@@ -82,6 +82,7 @@ class MainActivity : AppCompatActivity() {
         binding.tabLayout.addTab(binding.tabLayout.newTab().setText("就医记录"))
         binding.tabLayout.addTab(binding.tabLayout.newTab().setText("健康记录"))
         binding.tabLayout.addTab(binding.tabLayout.newTab().setText("用药提醒"))
+        binding.tabLayout.addTab(binding.tabLayout.newTab().setText("统计"))
 
         binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
@@ -90,10 +91,12 @@ class MainActivity : AppCompatActivity() {
                 medicalRecordSortOrder = 0
                 healthRecordSortOrder = 0
                 medicineReminderSortOrder = 0
+                searchView?.queryHint = getSearchHint()
                 when (tab?.position) {
                     0 -> showMedicalRecordTab()
                     1 -> showHealthRecordTab()
                     2 -> showMedicineReminderTab()
+                    3 -> showStatisticsTab()
                 }
             }
             override fun onTabUnselected(tab: TabLayout.Tab?) {}
@@ -106,6 +109,7 @@ class MainActivity : AppCompatActivity() {
     private fun showMedicalRecordTab() {
         binding.recyclerViewHealthRecords.visibility = View.GONE
         binding.recyclerViewMedicineReminders.visibility = View.GONE
+        binding.fabAdd.visibility = View.VISIBLE
         binding.fabAdd.setImageResource(android.R.drawable.ic_input_add)
         loadMedicalRecords()
     }
@@ -113,6 +117,7 @@ class MainActivity : AppCompatActivity() {
     private fun showHealthRecordTab() {
         binding.recyclerViewHealthRecords.visibility = View.VISIBLE
         binding.recyclerViewMedicineReminders.visibility = View.GONE
+        binding.fabAdd.visibility = View.VISIBLE
         binding.fabAdd.setImageResource(android.R.drawable.ic_input_add)
         loadHealthRecords()
     }
@@ -120,8 +125,19 @@ class MainActivity : AppCompatActivity() {
     private fun showMedicineReminderTab() {
         binding.recyclerViewHealthRecords.visibility = View.GONE
         binding.recyclerViewMedicineReminders.visibility = View.VISIBLE
+        binding.fabAdd.visibility = View.VISIBLE
         binding.fabAdd.setImageResource(android.R.drawable.ic_menu_add)
         loadMedicineReminders()
+    }
+
+    private fun showStatisticsTab() {
+        binding.recyclerViewHealthRecords.visibility = View.GONE
+        binding.recyclerViewMedicineReminders.visibility = View.GONE
+        binding.tvEmpty.visibility = View.GONE
+        binding.fabAdd.visibility = View.GONE
+        startActivity(Intent(this, StatisticsActivity::class.java))
+        // 跳转后切回就医记录Tab，避免用户返回时还在统计Tab
+        binding.tabLayout.getTabAt(0)?.select()
     }
 
     private fun setupRecyclerViews() {
@@ -231,6 +247,16 @@ class MainActivity : AppCompatActivity() {
             0 -> loadMedicalRecords()
             1 -> loadHealthRecords()
             2 -> loadMedicineReminders()
+            3 -> { /* 统计Tab跳转独立Activity，此处无需操作 */ }
+        }
+    }
+
+    private fun getSearchHint(): String {
+        return when (binding.tabLayout.selectedTabPosition) {
+            0 -> "搜索医院、症状、诊断..."
+            1 -> "搜索日期、备注..."
+            2 -> "搜索药品名、备注..."
+            else -> "搜索..."
         }
     }
 
@@ -298,7 +324,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadHealthRecords() {
         val order = if (healthRecordSortOrder == 0) "DESC" else "ASC"
-        val records = dbHelper.getAllHealthRecords(order)
+        val records = if (currentSearchQuery.isNotEmpty()) {
+            dbHelper.searchHealthRecords(currentSearchQuery, order)
+        } else {
+            dbHelper.getAllHealthRecords(order)
+        }
         binding.recyclerViewHealthRecords.adapter = healthRecordAdapter
         healthRecordAdapter.setData(records)
 
@@ -307,7 +337,11 @@ class MainActivity : AppCompatActivity() {
 
         if (records.isEmpty()) {
             binding.tvEmpty.visibility = View.VISIBLE
-            binding.tvEmpty.text = "暂无健康记录，点击右下角添加"
+            binding.tvEmpty.text = if (currentSearchQuery.isNotEmpty()) {
+                "未找到匹配的健康记录"
+            } else {
+                "暂无健康记录，点击右下角添加"
+            }
         } else {
             binding.tvEmpty.visibility = View.GONE
         }
@@ -315,7 +349,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadMedicineReminders() {
         val order = if (medicineReminderSortOrder == 0) "DESC" else "ASC"
-        val reminders = dbHelper.getAllMedicineReminders(order)
+        val reminders = if (currentSearchQuery.isNotEmpty()) {
+            dbHelper.searchMedicineReminders(currentSearchQuery, order)
+        } else {
+            dbHelper.getAllMedicineReminders(order)
+        }
         medicineReminderAdapter.setData(reminders)
 
         binding.recyclerViewHealthRecords.visibility = View.GONE
@@ -323,7 +361,11 @@ class MainActivity : AppCompatActivity() {
 
         if (reminders.isEmpty()) {
             binding.tvEmpty.visibility = View.VISIBLE
-            binding.tvEmpty.text = "暂无用药提醒，点击右下角添加"
+            binding.tvEmpty.text = if (currentSearchQuery.isNotEmpty()) {
+                "未找到匹配的用药提醒"
+            } else {
+                "暂无用药提醒，点击右下角添加"
+            }
         } else {
             binding.tvEmpty.visibility = View.GONE
         }
@@ -472,36 +514,28 @@ class MainActivity : AppCompatActivity() {
         searchView = searchMenuItem?.actionView as? SearchView
 
         searchView?.apply {
-            queryHint = "搜索医院、症状、诊断..."
+            queryHint = getSearchHint()
             setOnQueryTextListener(object : SearchView.OnQueryTextListener {
                 override fun onQueryTextSubmit(query: String?): Boolean {
                     currentSearchQuery = query?.trim() ?: ""
-                    if (binding.tabLayout.selectedTabPosition == 0) {
-                        loadMedicalRecords()
-                    }
+                    loadData()
                     return true
                 }
 
                 override fun onQueryTextChange(newText: String?): Boolean {
                     if (newText.isNullOrEmpty()) {
                         currentSearchQuery = ""
-                        if (binding.tabLayout.selectedTabPosition == 0) {
-                            loadMedicalRecords()
-                        }
+                        loadData()
                     }
                     return true
                 }
             })
 
             searchMenuItem?.setOnActionExpandListener(object : MenuItem.OnActionExpandListener {
-                override fun onMenuItemActionExpand(item: MenuItem): Boolean {
-                    return binding.tabLayout.selectedTabPosition == 0
-                }
+                override fun onMenuItemActionExpand(item: MenuItem): Boolean = true
                 override fun onMenuItemActionCollapse(item: MenuItem): Boolean {
                     currentSearchQuery = ""
-                    if (binding.tabLayout.selectedTabPosition == 0) {
-                        loadMedicalRecords()
-                    }
+                    loadData()
                     return true
                 }
             })
@@ -529,9 +563,8 @@ class MainActivity : AppCompatActivity() {
             batchDeleteItem?.isVisible = false
             syncItem?.isVisible = false
         } else {
-            val isMedicalTab = binding.tabLayout.selectedTabPosition == 0
-            searchMenuItem?.isVisible = isMedicalTab
-            sortItem?.isVisible = true
+            searchMenuItem?.isVisible = true
+            sortItem?.isVisible = binding.tabLayout.selectedTabPosition < 3
             filterItem?.isVisible = binding.tabLayout.selectedTabPosition == 0
             batchDeleteItem?.isVisible = binding.tabLayout.selectedTabPosition == 0
             syncItem?.isVisible = true
@@ -558,6 +591,10 @@ class MainActivity : AppCompatActivity() {
                 syncData()
                 true
             }
+            R.id.action_settings -> {
+                startActivity(Intent(this, SettingsActivity::class.java))
+                true
+            }
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -568,7 +605,7 @@ class MainActivity : AppCompatActivity() {
         } else if (currentSearchQuery.isNotEmpty()) {
             currentSearchQuery = ""
             searchMenuItem?.collapseActionView()
-            loadMedicalRecords()
+            loadData()
         } else {
             super.onBackPressed()
         }
@@ -582,7 +619,7 @@ class MainActivity : AppCompatActivity() {
                 } else if (currentSearchQuery.isNotEmpty()) {
                     currentSearchQuery = ""
                     searchMenuItem?.collapseActionView()
-                    loadMedicalRecords()
+                    loadData()
                 } else {
                     isEnabled = false
                     onBackPressedDispatcher.onBackPressed()

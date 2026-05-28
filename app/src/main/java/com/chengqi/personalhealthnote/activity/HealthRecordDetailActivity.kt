@@ -18,6 +18,7 @@ import com.chengqi.personalhealthnote.database.DatabaseHelper
 import com.chengqi.personalhealthnote.databinding.ActivityHealthRecordDetailBinding
 import com.chengqi.personalhealthnote.entity.HealthRecord
 import com.chengqi.personalhealthnote.service.AiHealthService
+import com.chengqi.personalhealthnote.utils.ShareUtils
 import org.json.JSONArray
 
 /**
@@ -99,6 +100,11 @@ class HealthRecordDetailActivity : AppCompatActivity() {
         // 删除按钮
         binding.btnDelete.setOnClickListener {
             showDeleteConfirmDialog()
+        }
+
+        // 分享按钮
+        binding.btnShare.setOnClickListener {
+            if (this::currentRecord.isInitialized) shareRecord()
         }
 
         // AI评估按钮
@@ -255,6 +261,22 @@ class HealthRecordDetailActivity : AppCompatActivity() {
     /**
      * 显示删除确认对话框
      */
+    private fun shareRecord() {
+        val lines = mutableListOf<String>()
+        lines.add("记录日期：${currentRecord.recordDate}")
+        if (currentRecord.weight > 0) lines.add("体重：${currentRecord.weight} kg")
+        if (currentRecord.systolicPressure > 0 && currentRecord.diastolicPressure > 0) {
+            lines.add("血压：${currentRecord.systolicPressure}/${currentRecord.diastolicPressure} mmHg")
+        }
+        if (currentRecord.heartRate > 0) lines.add("心率：${currentRecord.heartRate} 次/分")
+        if (currentRecord.bloodSugar > 0) lines.add("血糖：${currentRecord.bloodSugar} mmol/L")
+        if (currentRecord.sleepDuration > 0) lines.add("睡眠：${currentRecord.sleepDuration} 小时")
+        if (currentRecord.waterIntake > 0) lines.add("饮水：${currentRecord.waterIntake} ml")
+        if (currentRecord.steps > 0) lines.add("步数：${currentRecord.steps} 步")
+        if (currentRecord.notes.isNotEmpty()) lines.add("备注：${currentRecord.notes}")
+        ShareUtils.shareAsImage(this, "健康记录详情", lines)
+    }
+
     private fun showDeleteConfirmDialog() {
         AlertDialog.Builder(this)
             .setTitle("删除确认")

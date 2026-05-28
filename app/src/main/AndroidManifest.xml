@@ -80,6 +80,16 @@
             android:exported="false"
             android:label="图片预览"
             android:theme="@style/Theme.PersonalHealthNote.FullScreen" />
+        <activity
+            android:name=".activity.SettingsActivity"
+            android:parentActivityName=".activity.MainActivity"
+            android:exported="false"
+            android:label="设置" />
+        <activity
+            android:name=".activity.StatisticsActivity"
+            android:parentActivityName=".activity.MainActivity"
+            android:exported="false"
+            android:label="健康统计" />
 
         <!-- 用药提醒通知广播 -->
         <receiver
@@ -94,6 +104,17 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+
+        <!-- FileProvider用于分享图片 -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>
