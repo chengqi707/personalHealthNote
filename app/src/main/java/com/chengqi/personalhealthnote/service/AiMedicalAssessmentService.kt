@@ -89,7 +89,7 @@ class AiMedicalAssessmentService {
                             if (!response.isSuccessful) {
                                 val errorBody = response.body?.string() ?: ""
                                 Log.e("AiMedicalAssessment", "接口异常: code=${response.code}, body=$errorBody")
-                                callback(false, "评估生成失败：接口返回异常", null, null)
+                                callback(false, "接口异常(${response.code})：${errorBody.take(200)}", null, null)
                                 return
                             }
 
