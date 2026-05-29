@@ -413,3 +413,35 @@ data class MedicalRecord(
    - 关于：版本号（读BuildConfig）、隐私政策（弹窗展示）
    - 主菜单overflow新增"设置"入口
 5. **调试日志清理**：移除MedicalRecordDetailActivity、AiHealthService、AiMedicalAssessmentService中所有Log.d调试日志，仅保留Log.e错误日志
+
+### 10.10 2026年5月29日 — P0-P5功能迭代
+1. **健康记录AI评估结果缓存（P0）**：健康记录AI评估结果持久化存储，避免重复调用API
+   - HealthRecord实体新增healthEvaluation和lifeSuggestion字段
+   - 数据库升级v7：health_record表新增health_evaluation、life_suggestion、height三列
+   - DatabaseHelper新增updateHealthRecordEvaluation方法
+   - 详情页优先读缓存，无缓存时才调用API，评估成功后写入数据库
+2. **应用锁（P1）**：新增启动时身份验证，保护健康隐私数据
+   - 新增AppLockActivity：支持BiometricPrompt生物识别+4位PIN码备选
+   - 新增AppLockManager工具类：管理锁开关和PIN码存取
+   - MainActivity启动时检查锁状态，锁定时弹出验证界面
+   - 设置页新增"安全"分组，可开启/关闭应用锁、设置PIN码
+   - 新增依赖：androidx.biometric:biometric:1.1.0
+3. **用药提醒重复检测（P2）**：添加提醒时校验药品名是否已存在
+   - 保存前查询同名校验，精确匹配药品名（排除当前编辑的记录）
+   - 重复时弹窗提示"已有该药品的用药提醒，是否继续添加？"
+   - 用户可选择继续或取消
+4. **数据库恢复（P3）**：设置页新增从备份恢复数据库功能
+   - 扫描Downloads目录中health_note_backup_*.db文件
+   - 弹窗选择备份文件，二次确认后替换当前数据库
+   - 恢复成功后自动关闭应用，提示重启
+5. **健康数据输入范围校验（P4）**：健康记录编辑页各数值字段增加合理范围校验
+   - 体重：20-300kg，身高：50-250cm
+   - 收缩压：60-260mmHg，舒张压：30-160mmHg
+   - 心率：30-220次/分，血糖：1-35mmol/L
+   - 睡眠：0-24小时，饮水：≤10000ml，步数：≤100000
+6. **BMI追踪（P5）**：健康记录新增身高字段，支持BMI计算和趋势追踪
+   - 编辑页新增身高输入框，单位cm
+   - 详情页新增身高和BMI显示
+   - HealthRecord.calculateBMI()方法改为无参（使用自身height字段）
+   - 统计页趋势图新增BMI指标选项
+   - DatabaseHelper新增getBmiTrend方法

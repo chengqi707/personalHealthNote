@@ -68,6 +68,7 @@ dependencies {
     implementation(libs.glide)
     kapt(libs.glide)
     implementation(libs.okhttp)
+    implementation(libs.androidx.biometric)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

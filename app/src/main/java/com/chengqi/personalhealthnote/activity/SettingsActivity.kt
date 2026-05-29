@@ -13,6 +13,7 @@ import com.chengqi.personalhealthnote.database.DatabaseHelper
 import com.chengqi.personalhealthnote.databinding.ActivitySettingsBinding
 import com.chengqi.personalhealthnote.utils.DialogUtils
 import com.chengqi.personalhealthnote.utils.TokenManager
+import com.chengqi.personalhealthnote.utils.AppLockManager
 import com.chengqi.personalhealthnote.utils.ToastUtils
 import java.io.File
 import java.io.FileInputStream
@@ -38,6 +39,7 @@ class SettingsActivity : AppCompatActivity() {
         supportActionBar?.title = "设置"
 
         setupAccountSection()
+        setupSecuritySection()
         setupDataSection()
         setupAboutSection()
     }
@@ -76,6 +78,39 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupSecuritySection() {
+        updateSecurityUI()
+
+        binding.itemAppLock.setOnClickListener {
+            if (AppLockManager.isLockEnabled(this)) {
+                DialogUtils.showConfirm(
+                    this,
+                    "关闭应用锁",
+                    "关闭后任何人都可以直接进入应用查看健康数据，确定关闭吗？",
+                    "关闭"
+                ) {
+                    AppLockManager.setLockEnabled(this, false)
+                    AppLockManager.clearPin(this)
+                    updateSecurityUI()
+                    ToastUtils.show(this, "应用锁已关闭")
+                }
+            } else {
+                startActivityForResult(
+                    Intent(this, AppLockActivity::class.java).apply {
+                        putExtra("setting_pin", true)
+                    },
+                    REQUEST_SET_PIN
+                )
+            }
+        }
+    }
+
+    private fun updateSecurityUI() {
+        val enabled = AppLockManager.isLockEnabled(this)
+        binding.tvAppLockTitle.text = if (enabled) "应用锁已开启" else "应用锁"
+        binding.tvAppLockSummary.text = if (enabled) "点击关闭" else "设置PIN码保护隐私数据"
+    }
+
     private fun setupDataSection() {
         updateCacheSize()
 
@@ -95,6 +130,10 @@ class SettingsActivity : AppCompatActivity() {
 
         binding.itemBackupDatabase.setOnClickListener {
             backupDatabase()
+        }
+
+        binding.itemRestoreDatabase.setOnClickListener {
+            restoreDatabase()
         }
     }
 
@@ -184,6 +223,51 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
+    private fun restoreDatabase() {
+        val downloadsDir = android.os.Environment.getExternalStoragePublicDirectory(
+            android.os.Environment.DIRECTORY_DOWNLOADS
+        )
+        val backupFiles = downloadsDir.listFiles { _, name -> name.startsWith("health_note_backup_") && name.endsWith(".db") }
+            ?.sortedByDescending { it.lastModified() }
+
+        if (backupFiles.isNullOrEmpty()) {
+            ToastUtils.show(this, "Downloads目录中未找到备份文件")
+            return
+        }
+
+        val fileNames = backupFiles.map { it.name }.toTypedArray()
+        DialogUtils.showOptions(this, "选择备份文件", fileNames) { which ->
+            val selectedFile = backupFiles[which]
+            DialogUtils.showConfirm(
+                this,
+                "恢复确认",
+                "将从 ${selectedFile.name} 恢复数据库，当前数据将被替换，确定继续吗？",
+                "恢复"
+            ) {
+                doRestoreDatabase(selectedFile)
+            }
+        }
+    }
+
+    private fun doRestoreDatabase(backupFile: File) {
+        try {
+            dbHelper.close()
+            val dbPath = getDatabasePath(DatabaseHelper.DATABASE_NAME)
+
+            FileInputStream(backupFile).use { input ->
+                FileOutputStream(dbPath).use { output ->
+                    input.copyTo(output)
+                }
+            }
+
+            ToastUtils.show(this, "恢复成功，请重启应用")
+            finishAffinity()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            ToastUtils.show(this, "恢复失败：${e.message}")
+        }
+    }
+
     private fun setupAboutSection() {
         binding.tvVersionValue.text = "v${BuildConfig.VERSION_NAME}"
 
@@ -236,6 +320,9 @@ class SettingsActivity : AppCompatActivity() {
             updateAccountUI()
             ToastUtils.show(this, "登录成功")
         }
+        if (requestCode == REQUEST_SET_PIN && resultCode == RESULT_OK) {
+            updateSecurityUI()
+        }
     }
 
     override fun onDestroy() {
@@ -245,5 +332,6 @@ class SettingsActivity : AppCompatActivity() {
 
     companion object {
         private const val REQUEST_LOGIN = 3001
+        private const val REQUEST_SET_PIN = 3002
     }
 }

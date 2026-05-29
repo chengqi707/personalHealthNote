@@ -21,7 +21,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
 
     companion object {
         const val DATABASE_NAME = "health_note.db"
-        private const val DATABASE_VERSION = 6
+        private const val DATABASE_VERSION = 7
 
         // 健康记录表
         private const val TABLE_HEALTH_RECORD = "health_record"
@@ -41,6 +41,9 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         private const val COLUMN_UPDATE_TIME = "update_time"
         private const val COLUMN_IS_SYNC = "is_sync" // 是否已同步：0未同步 1已同步
         private const val COLUMN_DELETE_FLAG = "delete_flag" // 是否已删除：0未删除 1已删除
+        private const val COLUMN_HEIGHT = "height" // 身高，单位：cm
+        private const val COLUMN_HEALTH_EVALUATION = "health_evaluation" // AI健康评估结果
+        private const val COLUMN_LIFE_SUGGESTION = "life_suggestion" // AI生活建议结果
 
         // 用药提醒表
         private const val TABLE_MEDICINE_REMINDER = "medicine_reminder"
@@ -175,6 +178,12 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             // 版本5升级到版本6，用药提醒表新增日历事件ID字段
             db?.execSQL("ALTER TABLE $TABLE_MEDICINE_REMINDER ADD COLUMN $COLUMN_CALENDAR_EVENT_IDS TEXT DEFAULT ''")
         }
+        if (oldVersion < 7) {
+            // 版本6升级到版本7，健康记录表新增身高、AI评估缓存字段
+            db?.execSQL("ALTER TABLE $TABLE_HEALTH_RECORD ADD COLUMN $COLUMN_HEIGHT REAL DEFAULT 0")
+            db?.execSQL("ALTER TABLE $TABLE_HEALTH_RECORD ADD COLUMN $COLUMN_HEALTH_EVALUATION TEXT")
+            db?.execSQL("ALTER TABLE $TABLE_HEALTH_RECORD ADD COLUMN $COLUMN_LIFE_SUGGESTION TEXT")
+        }
     }
 
     // ==================== 健康记录 CRUD 操作 ====================
@@ -189,6 +198,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         val values = ContentValues().apply {
             put(COLUMN_RECORD_DATE, record.recordDate)
             put(COLUMN_WEIGHT, record.weight)
+            put(COLUMN_HEIGHT, record.height)
             put(COLUMN_SYSTOLIC_PRESSURE, record.systolicPressure)
             put(COLUMN_DIASTOLIC_PRESSURE, record.diastolicPressure)
             put(COLUMN_HEART_RATE, record.heartRate)
@@ -251,6 +261,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         val values = ContentValues().apply {
             put(COLUMN_RECORD_DATE, record.recordDate)
             put(COLUMN_WEIGHT, record.weight)
+            put(COLUMN_HEIGHT, record.height)
             put(COLUMN_SYSTOLIC_PRESSURE, record.systolicPressure)
             put(COLUMN_DIASTOLIC_PRESSURE, record.diastolicPressure)
             put(COLUMN_HEART_RATE, record.heartRate)
@@ -456,6 +467,18 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         }.also {
             cursor.close()
         }
+    }
+
+    /**
+     * 更新健康记录的AI评估缓存
+     */
+    fun updateHealthRecordEvaluation(id: Long, healthEvaluation: String, lifeSuggestion: String): Int {
+        val db = writableDatabase
+        val values = ContentValues().apply {
+            put(COLUMN_HEALTH_EVALUATION, healthEvaluation)
+            put(COLUMN_LIFE_SUGGESTION, lifeSuggestion)
+        }
+        return db.update(TABLE_HEALTH_RECORD, values, "$COLUMN_ID = ?", arrayOf(id.toString()))
     }
 
     /**
@@ -673,6 +696,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             id = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_ID)),
             recordDate = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_RECORD_DATE)),
             weight = cursor.getFloat(cursor.getColumnIndexOrThrow(COLUMN_WEIGHT)),
+            height = cursor.getFloat(cursor.getColumnIndexOrThrow(COLUMN_HEIGHT)),
             systolicPressure = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_SYSTOLIC_PRESSURE)),
             diastolicPressure = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_DIASTOLIC_PRESSURE)),
             heartRate = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_HEART_RATE)),
@@ -685,7 +709,9 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             createTime = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_CREATE_TIME)),
             updateTime = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_UPDATE_TIME)),
             isSync = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_IS_SYNC)),
-            deleteFlag = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_DELETE_FLAG))
+            deleteFlag = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_DELETE_FLAG)),
+            healthEvaluation = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_HEALTH_EVALUATION)),
+            lifeSuggestion = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_LIFE_SUGGESTION))
         )
     }
 
@@ -827,6 +853,34 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         )
         while (cursor.moveToNext()) {
             result.add(Pair(cursor.getString(0), cursor.getFloat(1)))
+        }
+        cursor.close()
+        return result
+    }
+
+    /**
+     * 获取BMI趋势数据
+     * @param days 最近天数
+     * @return 日期→BMI列表
+     */
+    fun getBmiTrend(days: Int): List<Pair<String, Float>> {
+        val result = mutableListOf<Pair<String, Float>>()
+        val db = readableDatabase
+        val cutoffDate = getCutoffDate(days)
+        val cursor = db.rawQuery(
+            "SELECT $COLUMN_RECORD_DATE, $COLUMN_WEIGHT, $COLUMN_HEIGHT FROM $TABLE_HEALTH_RECORD " +
+            "WHERE $COLUMN_RECORD_DATE >= ? AND $COLUMN_WEIGHT > 0 AND $COLUMN_HEIGHT > 0 AND $COLUMN_DELETE_FLAG = 0 " +
+            "ORDER BY $COLUMN_RECORD_DATE ASC",
+            arrayOf(cutoffDate)
+        )
+        while (cursor.moveToNext()) {
+            val date = cursor.getString(0)
+            val weight = cursor.getFloat(1)
+            val height = cursor.getFloat(2)
+            val heightM = height / 100f
+            if (heightM > 0) {
+                result.add(Pair(date, weight / (heightM * heightM)))
+            }
         }
         cursor.close()
         return result

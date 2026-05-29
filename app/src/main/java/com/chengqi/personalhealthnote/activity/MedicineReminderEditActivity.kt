@@ -18,6 +18,7 @@ import com.chengqi.personalhealthnote.databinding.ActivityMedicineReminderEditBi
 import com.chengqi.personalhealthnote.entity.MedicineReminder
 import com.chengqi.personalhealthnote.utils.AlarmScheduler
 import com.chengqi.personalhealthnote.utils.CalendarHelper
+import com.chengqi.personalhealthnote.utils.DialogUtils
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -519,6 +520,27 @@ class MedicineReminderEditActivity : AppCompatActivity() {
             return
         }
 
+        // 检查重复药品名（新增模式或编辑模式改了名字）
+        if (!isEditMode || medicineName != binding.etMedicineName.hint?.toString()) {
+            val existing = dbHelper.searchMedicineReminders(medicineName)
+            val duplicate = existing.filter { it.medicineName == medicineName && it.id != reminderId }
+            if (duplicate.isNotEmpty()) {
+                DialogUtils.showConfirm(
+                    this,
+                    "重复提醒",
+                    "已有\"$medicineName\"的用药提醒，是否继续添加？",
+                    "继续"
+                ) {
+                    doSaveReminder(medicineName, dosage, unit, notes)
+                }
+                return
+            }
+        }
+
+        doSaveReminder(medicineName, dosage, unit, notes)
+    }
+
+    private fun doSaveReminder(medicineName: String, dosage: String, unit: String, notes: String) {
         // 获取频率
         val frequency = binding.spinnerFrequency.selectedItemPosition + 1
 

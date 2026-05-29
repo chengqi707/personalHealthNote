@@ -21,6 +21,7 @@ class StatisticsActivity : AppCompatActivity() {
         private const val METRIC_WEIGHT = 0
         private const val METRIC_BLOOD_PRESSURE = 1
         private const val METRIC_BLOOD_SUGAR = 2
+        private const val METRIC_BMI = 3
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,6 +53,7 @@ class StatisticsActivity : AppCompatActivity() {
         binding.chipWeight.setOnClickListener { currentMetric = METRIC_WEIGHT; loadTrendChart() }
         binding.chipBp.setOnClickListener { currentMetric = METRIC_BLOOD_PRESSURE; loadTrendChart() }
         binding.chipSugar.setOnClickListener { currentMetric = METRIC_BLOOD_SUGAR; loadTrendChart() }
+        binding.chipBmi.setOnClickListener { currentMetric = METRIC_BMI; loadTrendChart() }
 
         binding.chipWeight.isChecked = true
     }
@@ -111,6 +113,21 @@ class StatisticsActivity : AppCompatActivity() {
                     binding.trendChart.visibility = View.GONE
                     binding.tvChartEmpty.visibility = View.VISIBLE
                     binding.tvChartEmpty.text = "暂无血糖数据"
+                } else {
+                    binding.trendChart.visibility = View.VISIBLE
+                    binding.tvChartEmpty.visibility = View.GONE
+                    binding.trendChart.setData(
+                        data.map { it.first },
+                        data.map { it.second }
+                    )
+                }
+            }
+            METRIC_BMI -> {
+                val data = dbHelper.getBmiTrend(currentDays)
+                if (data.isEmpty()) {
+                    binding.trendChart.visibility = View.GONE
+                    binding.tvChartEmpty.visibility = View.VISIBLE
+                    binding.tvChartEmpty.text = "暂无BMI数据（需录入身高）"
                 } else {
                     binding.trendChart.visibility = View.VISIBLE
                     binding.tvChartEmpty.visibility = View.GONE

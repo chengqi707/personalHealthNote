@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.GridLayoutManager
 import com.chengqi.personalhealthnote.adapter.ImageAdapter
 import com.chengqi.personalhealthnote.database.DatabaseHelper
 import com.chengqi.personalhealthnote.databinding.ActivityHealthRecordEditBinding
+import com.chengqi.personalhealthnote.utils.ToastUtils
 import com.chengqi.personalhealthnote.entity.HealthRecord
 import org.json.JSONArray
 import java.io.File
@@ -171,6 +172,9 @@ class HealthRecordEditActivity : AppCompatActivity() {
             if (record.weight > 0) {
                 binding.etWeight.setText(record.weight.toString())
             }
+            if (record.height > 0) {
+                binding.etHeight.setText(record.height.toString())
+            }
             if (record.systolicPressure > 0) {
                 binding.etSystolicPressure.setText(record.systolicPressure.toString())
             }
@@ -217,6 +221,7 @@ class HealthRecordEditActivity : AppCompatActivity() {
     private fun saveRecord() {
         // 获取输入值
         val weight = binding.etWeight.text.toString().toFloatOrNull() ?: 0f
+        val height = binding.etHeight.text.toString().toFloatOrNull() ?: 0f
         val systolicPressure = binding.etSystolicPressure.text.toString().toIntOrNull() ?: 0
         val diastolicPressure = binding.etDiastolicPressure.text.toString().toIntOrNull() ?: 0
         val heartRate = binding.etHeartRate.text.toString().toIntOrNull() ?: 0
@@ -243,9 +248,47 @@ class HealthRecordEditActivity : AppCompatActivity() {
         // 验证血压逻辑
         if (systolicPressure > 0 && diastolicPressure > 0) {
             if (systolicPressure <= diastolicPressure) {
-                Toast.makeText(this, "收缩压必须大于舒张压", Toast.LENGTH_SHORT).show()
+                ToastUtils.show(this, "收缩压必须大于舒张压")
                 return
             }
+        }
+
+        // 数值范围校验
+        if (weight > 0 && (weight < 20 || weight > 300)) {
+            ToastUtils.show(this, "体重范围应在20-300kg之间")
+            return
+        }
+        if (height > 0 && (height < 50 || height > 250)) {
+            ToastUtils.show(this, "身高范围应在50-250cm之间")
+            return
+        }
+        if (systolicPressure > 0 && (systolicPressure < 60 || systolicPressure > 260)) {
+            ToastUtils.show(this, "收缩压范围应在60-260mmHg之间")
+            return
+        }
+        if (diastolicPressure > 0 && (diastolicPressure < 30 || diastolicPressure > 160)) {
+            ToastUtils.show(this, "舒张压范围应在30-160mmHg之间")
+            return
+        }
+        if (heartRate > 0 && (heartRate < 30 || heartRate > 220)) {
+            ToastUtils.show(this, "心率范围应在30-220次/分钟之间")
+            return
+        }
+        if (bloodSugar > 0 && (bloodSugar < 1 || bloodSugar > 35)) {
+            ToastUtils.show(this, "血糖范围应在1-35mmol/L之间")
+            return
+        }
+        if (sleepDuration > 0 && (sleepDuration < 0 || sleepDuration > 24)) {
+            ToastUtils.show(this, "睡眠时长应在0-24小时之间")
+            return
+        }
+        if (waterIntake > 0 && waterIntake > 10000) {
+            ToastUtils.show(this, "饮水量不应超过10000ml")
+            return
+        }
+        if (steps > 0 && steps > 100000) {
+            ToastUtils.show(this, "步数不应超过100000")
+            return
         }
 
         val currentTime = System.currentTimeMillis()
@@ -264,6 +307,7 @@ class HealthRecordEditActivity : AppCompatActivity() {
             id = if (isEditMode) recordId else 0,
             recordDate = selectedDate,
             weight = weight,
+            height = height,
             systolicPressure = systolicPressure,
             diastolicPressure = diastolicPressure,
             heartRate = heartRate,

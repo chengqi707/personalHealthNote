@@ -129,6 +129,9 @@ class HealthRecordDetailActivity : AppCompatActivity() {
         // 填充基础数据
         binding.tvDate.text = record.recordDate
         binding.tvWeight.text = if (record.weight > 0) "${record.weight} kg" else "-"
+        binding.tvHeight.text = if (record.height > 0) "${record.height} cm" else "-"
+        val bmi = record.calculateBMI()
+        binding.tvBMI.text = if (bmi > 0) String.format("%.1f", bmi) else "-"
         binding.tvBloodPressure.text = if (record.systolicPressure > 0 && record.diastolicPressure > 0) {
             "${record.systolicPressure}/${record.diastolicPressure} mmHg"
         } else "-"
@@ -159,12 +162,46 @@ class HealthRecordDetailActivity : AppCompatActivity() {
 
         // 隐藏评估结果
         binding.cardAssessmentResult.visibility = View.GONE
+
+        // 如果有缓存的评估结果，直接展示
+        val eval = record.healthEvaluation
+        if (!eval.isNullOrEmpty()) {
+            val result = AiHealthService.HealthAssessmentResult(
+                overallAssessment = eval,
+                healthScore = 0,
+                riskWarnings = emptyList(),
+                dietSuggestions = emptyList(),
+                exerciseSuggestions = emptyList(),
+                sleepSuggestions = emptyList(),
+                lifestyleSuggestions = record.lifeSuggestion?.let { listOf(it) } ?: emptyList(),
+                medicalSuggestions = emptyList()
+            )
+            showAssessmentResult(result)
+        }
     }
 
     /**
      * 生成AI健康评估
      */
     private fun generateHealthAssessment() {
+        // 优先读缓存
+        val eval = currentRecord.healthEvaluation
+        if (!eval.isNullOrEmpty()) {
+            val result = AiHealthService.HealthAssessmentResult(
+                overallAssessment = eval,
+                healthScore = 0,
+                riskWarnings = emptyList(),
+                dietSuggestions = emptyList(),
+                exerciseSuggestions = emptyList(),
+                sleepSuggestions = emptyList(),
+                lifestyleSuggestions = currentRecord.lifeSuggestion?.let { listOf(it) } ?: emptyList(),
+                medicalSuggestions = emptyList()
+            )
+            showAssessmentResult(result)
+            return
+        }
+
+        // 显示加载状态
         // 显示加载状态
         binding.layoutLoading.visibility = View.VISIBLE
         binding.btnAiAssessment.isEnabled = false
@@ -180,6 +217,19 @@ class HealthRecordDetailActivity : AppCompatActivity() {
                 binding.btnAiAssessment.isEnabled = true
 
                 if (success && result != null) {
+                    // 缓存评估结果到数据库
+                    val evalText = result.overallAssessment +
+                        result.riskWarnings.joinToString("；", "风险：", "") +
+                        result.dietSuggestions.joinToString("；", "饮食：", "") +
+                        result.exerciseSuggestions.joinToString("；", "运动：", "") +
+                        result.sleepSuggestions.joinToString("；", "睡眠：", "") +
+                        result.medicalSuggestions.joinToString("；", "就医：", "")
+                    val suggestionText = result.lifestyleSuggestions.joinToString("；")
+                    dbHelper.updateHealthRecordEvaluation(currentRecord.id, evalText, suggestionText)
+                    currentRecord = currentRecord.copy(
+                        healthEvaluation = evalText,
+                        lifeSuggestion = suggestionText
+                    )
                     // 显示评估结果
                     showAssessmentResult(result)
                 } else {

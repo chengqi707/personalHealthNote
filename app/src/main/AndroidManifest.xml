@@ -90,6 +90,11 @@
             android:parentActivityName=".activity.MainActivity"
             android:exported="false"
             android:label="健康统计" />
+        <activity
+            android:name=".activity.AppLockActivity"
+            android:exported="false"
+            android:label="应用锁"
+            android:screenOrientation="portrait" />
 
         <!-- 用药提醒通知广播 -->
         <receiver

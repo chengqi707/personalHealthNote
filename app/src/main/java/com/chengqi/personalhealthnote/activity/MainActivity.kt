@@ -23,6 +23,7 @@ import com.chengqi.personalhealthnote.utils.CalendarHelper
 import com.chengqi.personalhealthnote.utils.DialogUtils
 import com.chengqi.personalhealthnote.utils.ToastUtils
 import com.chengqi.personalhealthnote.utils.TokenManager
+import com.chengqi.personalhealthnote.utils.AppLockManager
 import com.google.android.material.tabs.TabLayout
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -56,12 +57,18 @@ class MainActivity : AppCompatActivity() {
         const val REQUEST_ADD_MEDICINE = 1005
         const val REQUEST_EDIT_MEDICINE = 1006
         const val REQUEST_LOGIN = 1007
+        const val REQUEST_APP_LOCK = 1008
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        // 检查应用锁
+        if (AppLockManager.isLockEnabled(this) && AppLockManager.isPinSet(this)) {
+            startActivityForResult(Intent(this, AppLockActivity::class.java), REQUEST_APP_LOCK)
+        }
 
         dbHelper = DatabaseHelper(this)
 
@@ -720,6 +727,7 @@ class MainActivity : AppCompatActivity() {
 
         if (resultCode == RESULT_OK) {
             when (requestCode) {
+                REQUEST_APP_LOCK -> { /* 解锁成功，继续正常使用 */ }
                 REQUEST_ADD_MEDICAL_RECORD, REQUEST_EDIT_MEDICAL_RECORD -> {
                     loadMedicalRecords()
                 }
