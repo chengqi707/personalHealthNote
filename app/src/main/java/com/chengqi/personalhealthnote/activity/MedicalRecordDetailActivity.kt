@@ -19,7 +19,9 @@ import com.chengqi.personalhealthnote.database.DatabaseHelper
 import com.chengqi.personalhealthnote.databinding.ActivityMedicalRecordDetailBinding
 import com.chengqi.personalhealthnote.entity.MedicalRecord
 import com.chengqi.personalhealthnote.service.AiMedicalAssessmentService
+import com.chengqi.personalhealthnote.utils.CalendarHelper
 import com.chengqi.personalhealthnote.utils.DialogUtils
+import com.chengqi.personalhealthnote.utils.TemplateManager
 import com.chengqi.personalhealthnote.utils.ToastUtils
 import com.chengqi.personalhealthnote.utils.ShareUtils
 import androidx.recyclerview.widget.GridLayoutManager
@@ -98,6 +100,11 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
             shareRecord()
         }
 
+        binding.btnSaveTemplate.setOnClickListener {
+            if (!this::currentRecord.isInitialized) return@setOnClickListener
+            saveAsTemplate()
+        }
+
         binding.btnHealthAssessment.setOnClickListener {
             if (!this::currentRecord.isInitialized) {
                 ToastUtils.show(this, "记录加载中，请稍后")
@@ -128,6 +135,63 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
         binding.tvDiagnosisResult.text = record.diagnosisResult
         binding.tvCheckItems.text = record.checkItems.ifEmpty { "未填写" }
         binding.tvMedicines.text = record.medicines.ifEmpty { "未填写" }
+
+        // 复诊日期
+        if (record.followUpDate.isNotEmpty()) {
+            binding.layoutFollowUp.visibility = View.VISIBLE
+            binding.tvFollowUpDate.text = record.followUpDate
+            // 计算倒计时
+            try {
+                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                val followUpDate = sdf.parse(record.followUpDate)
+                if (followUpDate != null) {
+                    val today = java.util.Calendar.getInstance()
+                    val followUpCal = java.util.Calendar.getInstance().apply { time = followUpDate }
+                    val diffMs = followUpCal.timeInMillis - today.timeInMillis
+                    val diffDays = (diffMs / (1000 * 60 * 60 * 24)).toInt()
+                    if (diffDays > 0) {
+                        binding.tvFollowUpCountdown.text = "还有${diffDays}天复诊"
+                        binding.tvFollowUpCountdown.setTextColor(getColor(R.color.primary))
+                    } else if (diffDays == 0) {
+                        binding.tvFollowUpCountdown.text = "今天复诊"
+                        binding.tvFollowUpCountdown.setTextColor(getColor(R.color.primary))
+                    } else {
+                        binding.tvFollowUpCountdown.text = "已过期${-diffDays}天"
+                        binding.tvFollowUpCountdown.setTextColor(getColor(R.color.textHint))
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            // 加入日历按钮
+            binding.btnAddFollowUpCalendar.setOnClickListener {
+                try {
+                    if (record.followUpCalendarEventId.isNotEmpty()) {
+                        ToastUtils.show(this, "已添加过日历提醒")
+                        return@setOnClickListener
+                    }
+                    val eventId = CalendarHelper.addFollowUpEvent(this, record)
+                    if (eventId.isNotEmpty()) {
+                        val updatedRecord = record.copy(followUpCalendarEventId = eventId)
+                        dbHelper.updateMedicalRecord(updatedRecord)
+                        currentRecord = updatedRecord
+                        ToastUtils.show(this, "已添加到日历提醒")
+                        binding.btnAddFollowUpCalendar.text = "已添加日历提醒"
+                        binding.btnAddFollowUpCalendar.isEnabled = false
+                    } else {
+                        ToastUtils.show(this, "添加日历提醒失败")
+                    }
+                } catch (e: Exception) {
+                    ToastUtils.show(this, "添加日历提醒失败")
+                }
+            }
+            if (record.followUpCalendarEventId.isNotEmpty()) {
+                binding.btnAddFollowUpCalendar.text = "已添加日历提醒"
+                binding.btnAddFollowUpCalendar.isEnabled = false
+            }
+        } else {
+            binding.layoutFollowUp.visibility = View.GONE
+        }
 
         imagePaths.clear()
         if (record.imagePaths.isNotEmpty()) {
@@ -169,8 +233,9 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
         binding.btnHealthAssessment.text = "评估中..."
 
         val standardText = currentRecord.toStandardFormatText()
+        val userProfile = dbHelper.getUserProfile()
         val context = this
-        aiAssessmentService.assess(standardText) { success, message, healthEvaluation, lifeSuggestion ->
+        aiAssessmentService.assess(standardText, userProfile) { success, message, healthEvaluation, lifeSuggestion ->
             try {
                 runOnUiThread {
                     if (isFinishing || isDestroyed) {
@@ -219,6 +284,19 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
         dialog.show()
     }
 
+    private fun saveAsTemplate() {
+        val templateName = "${currentRecord.hospital}-${currentRecord.diagnosisResult}"
+        val template = TemplateManager.MedicalRecordTemplate(
+            name = templateName,
+            hospital = currentRecord.hospital,
+            doctor = currentRecord.doctor,
+            checkItems = currentRecord.checkItems,
+            medicines = currentRecord.medicines
+        )
+        TemplateManager.saveTemplate(this, template)
+        ToastUtils.show(this, "已保存为模板：$templateName")
+    }
+
     private fun shareRecord() {
         val lines = mutableListOf<String>()
         lines.add("就医时间：${currentRecord.medicalTime}")
@@ -257,6 +335,14 @@ class MedicalRecordDetailActivity : AppCompatActivity() {
             "确定要删除这条记录吗？删除后不可恢复",
             "确定"
         ) {
+            // 删除关联的复诊日历事件
+            try {
+                if (currentRecord.followUpCalendarEventId.isNotEmpty()) {
+                    CalendarHelper.deleteFollowUpEvent(this, currentRecord.followUpCalendarEventId)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
             val result = dbHelper.deleteMedicalRecord(currentRecord.id.toInt())
             if (result > 0) {
                 ToastUtils.show(this, "删除成功")

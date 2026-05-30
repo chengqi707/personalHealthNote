@@ -95,6 +95,26 @@
             android:exported="false"
             android:label="应用锁"
             android:screenOrientation="portrait" />
+        <activity
+            android:name=".activity.MedicineReminderDetailActivity"
+            android:parentActivityName=".activity.MainActivity"
+            android:exported="false"
+            android:label="用药提醒详情" />
+        <activity
+            android:name=".activity.UserProfileActivity"
+            android:parentActivityName=".activity.SettingsActivity"
+            android:exported="false"
+            android:label="个人健康档案" />
+        <activity
+            android:name=".activity.PhysicalExamReportAddActivity"
+            android:parentActivityName=".activity.MainActivity"
+            android:exported="false"
+            android:label="新增体检报告" />
+        <activity
+            android:name=".activity.PhysicalExamReportDetailActivity"
+            android:parentActivityName=".activity.MainActivity"
+            android:exported="false"
+            android:label="体检报告详情" />
 
         <!-- 用药提醒通知广播 -->
         <receiver

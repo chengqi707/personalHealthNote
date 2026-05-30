@@ -17,7 +17,9 @@ data class MedicalRecord(
     val createTime: Long = System.currentTimeMillis(),
     val updateTime: Long = System.currentTimeMillis(),
     val healthEvaluation: String? = null,  // 健康状态评估结果（本地缓存）
-    val lifeSuggestion: String? = null     // 生活建议结果（本地缓存）
+    val lifeSuggestion: String? = null,    // 生活建议结果（本地缓存）
+    val followUpDate: String = "",         // 建议复诊日期，格式：yyyy-MM-dd
+    val followUpCalendarEventId: String = "" // 复诊日历事件ID
 ) {
     /**
      * 将就医记录转换为固定格式文本，作为云侧模型输入

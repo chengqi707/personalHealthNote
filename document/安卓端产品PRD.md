@@ -445,3 +445,58 @@ data class MedicalRecord(
    - HealthRecord.calculateBMI()方法改为无参（使用自身height字段）
    - 统计页趋势图新增BMI指标选项
    - DatabaseHelper新增getBmiTrend方法
+
+### 10.11 2026年5月29日 — P0-P3功能迭代
+1. **用药提醒详情页（P0）**：新增MedicineReminderDetailActivity，点击提醒列表项跳转详情页而非直接编辑
+   - 展示药品名称、剂量、频率、提醒时间、服用时间（饭前/饭后）、日期范围、启用状态、备注
+   - 底部提供删除和编辑按钮
+   - 编辑跳转MedicineReminderEditActivity，支持返回刷新
+   - MainActivity点击事件更新为跳转详情页
+2. **批量删除扩展（P1）**：健康记录和用药提醒Tab支持批量删除
+   - HealthRecordAdapter新增选择模式（CheckBox、toggleSelection、selectAll、removeRecords）
+   - MedicineReminderAdapter新增选择模式，选择模式下隐藏Switch开关
+   - item_health_record.xml和item_medicine_reminder.xml新增cbSelect CheckBox
+   - MainActivity批量删除逻辑按Tab分发，enterSelectionMode/exitSelectionMode/performBatchDelete统一
+   - 菜单"批量删除"入口在三个Tab均可见
+   - 退出选择模式时恢复正确的ActionBar标题
+3. **表单草稿自动保存（P2）**：就医记录和健康记录新增表单支持草稿保存
+   - 新增DraftManager工具类，使用独立SharedPreferences分别存储两种表单草稿
+   - 健康记录编辑页（新增模式）：onStop自动保存草稿，进入时检测草稿弹窗恢复，保存成功后清除草稿
+   - 就医记录新增页：onStop自动保存草稿，进入时检测草稿弹窗恢复，提交成功后清除草稿
+   - 编辑模式不触发草稿保存
+4. **就医记录模板（P3）**：支持将就医记录保存为模板，新增时快速填充
+   - 新增TemplateManager工具类，使用SharedPreferences+JSON存储模板列表
+   - 模板保存：医院、医生、检查项目、药品清单（经常重复的字段）
+   - MedicalRecordDetailActivity底部新增"模板"按钮，一键保存当前记录为模板
+   - MedicalRecordAddActivity新增"使用模板快速填充"按钮，弹窗选择模板自动填充表单
+
+### 10.12 2026年5月30日 — P4功能迭代
+1. **已停用提醒视觉反馈（P4）**：用药提醒关闭后列表项和详情页增加明显视觉区分
+   - MedicineReminderAdapter：禁用时药品名添加删除线+显示"（已停用）"后缀，所有文字颜色变灰（textHint），卡片整体透明度降至0.6
+   - 启用时恢复原始样式：药品名正常颜色无删除线，详细信息文字为textSecondary，卡片完全不透明
+   - 详情页启用状态文字颜色区分：已启用显示primary蓝色，已停用显示textHint灰色
+
+### 10.13 2026年5月30日 — 体检报告模块、用户健康档案、AI报告解析
+1. **体检报告模块**：新增体检报告管理功能，支持拍照/相册上传报告图片、AI智能解析指标
+   - 新增 PhysicalExamReport 实体类：体检日期、机构、标题、图片路径、AI解析指标、异常摘要、建议
+   - 新增 physical_exam_report 数据库表（数据库升级 v8），支持完整 CRUD
+   - 新增 PhysicalExamReportAddActivity：日期选择、机构/标题输入、图片上传（最多9张，压缩存储）、AI解析按钮
+   - 新增 PhysicalExamReportDetailActivity：展示标题、日期、机构、异常指标、解析指标列表、AI建议、报告图片
+   - 新增 PhysicalExamReportAdapter：卡片布局，展示标题、日期、机构、异常计数、异常摘要
+   - MainActivity 新增 Tab4 "体检报告"，FAB跳转新增页，搜索提示支持
+   - 批量删除暂不支持体检报告Tab
+2. **AI体检报告解析服务**：通过豆包API（含视觉能力）自动识别体检报告图片中的指标
+   - 新增 AiExamReportParseService：Base64编码图片+结构化Prompt，解析返回 indicators/abnormalSummary/suggestion
+   - 支持文本+图片多模态输入，60s超时（图片较大），temperature 0.3确保结构化输出
+   - 解析结果支持代码块（```json）和纯JSON两种格式容错
+   - 结合用户档案信息（UserProfile）提升解析精准度
+3. **用户健康档案**：新增个人健康档案页面，供AI评估参考
+   - 新增 UserProfile 实体类：性别、出生日期、身高、基线体重、过敏史、家族病史、慢性病
+   - 新增 user_profile 数据库表（数据库升级 v8），单例模式（ID固定为1）
+   - 新增 UserProfileActivity：性别下拉选择、出生日期选择器、身高体重输入、健康信息多行输入
+   - SettingsActivity 新增"个人健康档案"入口，显示已填写状态摘要
+   - UserProfile.toPromptText() 方法，用于构造AI评估的上下文提示
+4. **就医记录复诊提醒**：就医记录新增复诊日期字段
+   - MedicalRecord 实体类新增 followUpDate 和 followUpCalendarEventId 字段
+   - medical_record 表新增 follow_up_date 和 follow_up_calendar_event_id 列（数据库升级 v8）
+   - 复诊日历事件预留接入 CalendarHelper 的接口

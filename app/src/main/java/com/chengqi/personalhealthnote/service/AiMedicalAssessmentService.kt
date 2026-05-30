@@ -2,6 +2,7 @@ package com.chengqi.personalhealthnote.service
 
 import android.util.Log
 import com.chengqi.personalhealthnote.BuildConfig
+import com.chengqi.personalhealthnote.entity.UserProfile
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -34,6 +35,7 @@ class AiMedicalAssessmentService {
      */
     fun assess(
         standardText: String,
+        userProfile: UserProfile? = null,
         callback: (Boolean, String, String?, String?) -> Unit
     ) {
         try {
@@ -45,6 +47,15 @@ class AiMedicalAssessmentService {
             if (apiUrl.isEmpty()) {
                 callback(false, "请先配置API地址", null, null)
                 return
+            }
+
+            val fullText = buildString {
+                val profileText = userProfile?.toPromptText()
+                if (!profileText.isNullOrEmpty()) {
+                    append(profileText)
+                    append("\n")
+                }
+                append(standardText)
             }
 
             val requestBody = JSONObject().apply {
@@ -66,7 +77,7 @@ class AiMedicalAssessmentService {
                     })
                     put(JSONObject().apply {
                         put("role", "user")
-                        put("content", standardText)
+                        put("content", fullText)
                     })
                 })
             }

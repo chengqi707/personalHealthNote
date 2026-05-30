@@ -6,6 +6,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
 import android.provider.CalendarContract
+import com.chengqi.personalhealthnote.entity.MedicalRecord
 import com.chengqi.personalhealthnote.entity.MedicineReminder
 import org.json.JSONArray
 import java.text.SimpleDateFormat
@@ -97,6 +98,78 @@ object CalendarHelper {
     fun updateCalendarEvents(context: Context, reminder: MedicineReminder, oldEventIds: String): String {
         deleteCalendarEvents(context, oldEventIds)
         return addCalendarEvents(context, reminder)
+    }
+
+    // ==================== 复诊提醒日历事件 ====================
+
+    fun addFollowUpEvent(context: Context, record: MedicalRecord): String {
+        if (record.followUpDate.isEmpty()) return ""
+        val calendarId = getDefaultCalendarId(context) ?: return ""
+
+        val resolver = context.contentResolver
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val date = dateFormat.parse(record.followUpDate) ?: return ""
+
+        val startCal = Calendar.getInstance().apply {
+            time = date
+            set(Calendar.HOUR_OF_DAY, 9)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+        }
+
+        val endCal = startCal.clone() as Calendar
+        endCal.add(Calendar.HOUR_OF_DAY, 1)
+
+        val title = "复诊提醒：${record.hospital}"
+        val description = buildString {
+            append("就诊医院：${record.hospital}\n")
+            if (record.doctor.isNotEmpty()) append("接诊医生：${record.doctor}\n")
+            append("就诊结果：${record.diagnosisResult}")
+            if (record.medicines.isNotEmpty()) append("\n药品：${record.medicines}")
+        }
+
+        val values = ContentValues().apply {
+            put(CalendarContract.Events.DTSTART, startCal.timeInMillis)
+            put(CalendarContract.Events.DTEND, endCal.timeInMillis)
+            put(CalendarContract.Events.TITLE, title)
+            put(CalendarContract.Events.DESCRIPTION, description)
+            put(CalendarContract.Events.CALENDAR_ID, calendarId)
+            put(CalendarContract.Events.EVENT_TIMEZONE, TimeZone.getDefault().id)
+        }
+
+        val eventUri: Uri? = resolver.insert(CalendarContract.Events.CONTENT_URI, values)
+        val eventId = eventUri?.lastPathSegment?.toLong() ?: -1L
+
+        if (eventId > 0) {
+            // 提前1天提醒
+            val reminderValues = ContentValues().apply {
+                put(CalendarContract.Reminders.EVENT_ID, eventId)
+                put(CalendarContract.Reminders.MINUTES, 24 * 60)
+                put(CalendarContract.Reminders.METHOD, CalendarContract.Reminders.METHOD_ALERT)
+            }
+            resolver.insert(CalendarContract.Reminders.CONTENT_URI, reminderValues)
+            // 当天再提醒一次
+            val reminderValues2 = ContentValues().apply {
+                put(CalendarContract.Reminders.EVENT_ID, eventId)
+                put(CalendarContract.Reminders.MINUTES, 0)
+                put(CalendarContract.Reminders.METHOD, CalendarContract.Reminders.METHOD_ALERT)
+            }
+            resolver.insert(CalendarContract.Reminders.CONTENT_URI, reminderValues2)
+        }
+
+        return eventId.toString()
+    }
+
+    fun deleteFollowUpEvent(context: Context, eventId: String) {
+        if (eventId.isEmpty()) return
+        try {
+            val resolver = context.contentResolver
+            val id = eventId.toLong()
+            val eventUri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, id)
+            resolver.delete(eventUri, null, null)
+        } catch (e: Exception) {
+            android.util.Log.e("CalendarHelper", "删除复诊日历事件失败", e)
+        }
     }
 
     private fun addSingleEvent(

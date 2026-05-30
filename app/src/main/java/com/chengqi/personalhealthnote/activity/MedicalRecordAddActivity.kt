@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.MenuItem
+import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -21,6 +22,8 @@ import com.chengqi.personalhealthnote.databinding.ActivityMedicalRecordAddBindin
 import com.chengqi.personalhealthnote.entity.MedicalRecord
 import com.chengqi.personalhealthnote.utils.ImageCompressUtils
 import com.chengqi.personalhealthnote.utils.DialogUtils
+import com.chengqi.personalhealthnote.utils.DraftManager
+import com.chengqi.personalhealthnote.utils.TemplateManager
 import com.chengqi.personalhealthnote.utils.ToastUtils
 import org.json.JSONArray
 import java.io.File
@@ -34,8 +37,10 @@ class MedicalRecordAddActivity : AppCompatActivity() {
     private lateinit var dbHelper: DatabaseHelper
     private lateinit var imageAdapter: ImageAdapter
     private var selectedMedicalTime: String = ""
+    private var selectedFollowUpDate: String = ""
     private val calendar = Calendar.getInstance()
     private val dateTimeFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+    private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     private val selectedImages = mutableListOf<String>()
 
     companion object {
@@ -54,6 +59,9 @@ class MedicalRecordAddActivity : AppCompatActivity() {
         initViews()
         setupListeners()
         initImageRecyclerView()
+
+        // 检查草稿
+        restoreMedicalDraft()
     }
 
     private fun initViews() {
@@ -83,6 +91,14 @@ class MedicalRecordAddActivity : AppCompatActivity() {
         binding.tvMedicalTime.setOnClickListener { showDateTimePicker() }
         binding.btnSubmit.setOnClickListener { submitRecord() }
         binding.btnAddImage.setOnClickListener { checkPermissionAndPickImage() }
+        binding.btnUseTemplate.setOnClickListener { showTemplatePicker() }
+        binding.tvFollowUpDate.setOnClickListener { showFollowUpDatePicker() }
+        binding.tvClearFollowUpDate.setOnClickListener {
+            selectedFollowUpDate = ""
+            binding.tvFollowUpDate.text = "请选择复诊日期（可选）"
+            binding.tvFollowUpDate.setTextColor(getColor(R.color.textHint))
+            binding.tvClearFollowUpDate.visibility = View.GONE
+        }
 
         setupMaxLengthWatcher(binding.etSymptoms, 500)
         setupMaxLengthWatcher(binding.etDiagnosisResult, 500)
@@ -103,6 +119,25 @@ class MedicalRecordAddActivity : AppCompatActivity() {
                 }
             }
         })
+    }
+
+    private fun showFollowUpDatePicker() {
+        val cal = Calendar.getInstance()
+        val datePickerDialog = DatePickerDialog(
+            this,
+            { _, year, month, dayOfMonth ->
+                cal.set(year, month, dayOfMonth)
+                selectedFollowUpDate = dateFormat.format(cal.time)
+                binding.tvFollowUpDate.text = selectedFollowUpDate
+                binding.tvFollowUpDate.setTextColor(getColor(R.color.textPrimary))
+                binding.tvClearFollowUpDate.visibility = View.VISIBLE
+            },
+            cal.get(Calendar.YEAR),
+            cal.get(Calendar.MONTH),
+            cal.get(Calendar.DAY_OF_MONTH)
+        )
+        datePickerDialog.datePicker.minDate = System.currentTimeMillis()
+        datePickerDialog.show()
     }
 
     private fun showDateTimePicker() {
@@ -193,11 +228,13 @@ class MedicalRecordAddActivity : AppCompatActivity() {
             medicines = medicines,
             imagePaths = imageJson,
             createTime = currentTime,
-            updateTime = currentTime
+            updateTime = currentTime,
+            followUpDate = selectedFollowUpDate
         )
 
         val newId = dbHelper.insertMedicalRecord(record)
         if (newId > 0) {
+            DraftManager.clearMedicalRecordDraft(this)
             ToastUtils.show(this, "新增成功")
             setResult(RESULT_OK)
             finish()
@@ -289,6 +326,66 @@ class MedicalRecordAddActivity : AppCompatActivity() {
             android.R.id.home -> { finish(); true }
             else -> super.onOptionsItemSelected(item)
         }
+    }
+
+    private fun showTemplatePicker() {
+        val templates = TemplateManager.getTemplates(this)
+        if (templates.isEmpty()) {
+            ToastUtils.show(this, "暂无模板，可在就医记录详情页保存模板")
+            return
+        }
+        val names = templates.map { it.name }.toTypedArray()
+        DialogUtils.showOptions(this, "选择模板", names) { which ->
+            val template = templates[which]
+            if (template.hospital.isNotEmpty()) binding.etHospital.setText(template.hospital)
+            if (template.doctor.isNotEmpty()) binding.etDoctor.setText(template.doctor)
+            if (template.checkItems.isNotEmpty()) binding.etCheckItems.setText(template.checkItems)
+            if (template.medicines.isNotEmpty()) binding.etMedicines.setText(template.medicines)
+            ToastUtils.show(this, "已填充模板：${template.name}")
+        }
+    }
+
+    private fun restoreMedicalDraft() {
+        val draft = DraftManager.getMedicalRecordDraft(this) ?: return
+        DialogUtils.showConfirm(this, "恢复草稿", "检测到上次未保存的记录，是否恢复？", "恢复") {
+            if (draft.medicalTime.isNotEmpty()) {
+                selectedMedicalTime = draft.medicalTime
+                binding.tvMedicalTime.text = selectedMedicalTime
+                binding.tvMedicalTime.setTextColor(getColor(R.color.textPrimary))
+                binding.tvMedicalTime.setBackgroundResource(R.drawable.bg_edit_text)
+            }
+            if (draft.hospital.isNotEmpty()) binding.etHospital.setText(draft.hospital)
+            if (draft.doctor.isNotEmpty()) binding.etDoctor.setText(draft.doctor)
+            if (draft.symptoms.isNotEmpty()) binding.etSymptoms.setText(draft.symptoms)
+            if (draft.diagnosisResult.isNotEmpty()) binding.etDiagnosisResult.setText(draft.diagnosisResult)
+            if (draft.checkItems.isNotEmpty()) binding.etCheckItems.setText(draft.checkItems)
+            if (draft.medicines.isNotEmpty()) binding.etMedicines.setText(draft.medicines)
+            if (draft.followUpDate.isNotEmpty()) {
+                selectedFollowUpDate = draft.followUpDate
+                binding.tvFollowUpDate.text = selectedFollowUpDate
+                binding.tvFollowUpDate.setTextColor(getColor(R.color.textPrimary))
+                binding.tvClearFollowUpDate.visibility = View.VISIBLE
+            }
+        }
+    }
+
+    private fun saveMedicalDraft() {
+        val draft = DraftManager.MedicalRecordDraft(
+            medicalTime = selectedMedicalTime,
+            hospital = binding.etHospital.text.toString(),
+            doctor = binding.etDoctor.text.toString(),
+            symptoms = binding.etSymptoms.text.toString(),
+            diagnosisResult = binding.etDiagnosisResult.text.toString(),
+            checkItems = binding.etCheckItems.text.toString(),
+            medicines = binding.etMedicines.text.toString(),
+            followUpDate = selectedFollowUpDate
+        )
+        DraftManager.saveMedicalRecordDraft(this, draft)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        saveMedicalDraft()
     }
 
     override fun onDestroy() {

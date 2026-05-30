@@ -17,6 +17,8 @@ import com.chengqi.personalhealthnote.adapter.ImageAdapter
 import com.chengqi.personalhealthnote.database.DatabaseHelper
 import com.chengqi.personalhealthnote.databinding.ActivityHealthRecordEditBinding
 import com.chengqi.personalhealthnote.utils.ToastUtils
+import com.chengqi.personalhealthnote.utils.DialogUtils
+import com.chengqi.personalhealthnote.utils.DraftManager
 import com.chengqi.personalhealthnote.entity.HealthRecord
 import org.json.JSONArray
 import java.io.File
@@ -75,6 +77,8 @@ class HealthRecordEditActivity : AppCompatActivity() {
                 selectedDate = dateFormat.format(calendar.time)
             }
             binding.tvDate.text = selectedDate
+            // 检查草稿
+            restoreHealthDraft()
         }
     }
 
@@ -347,6 +351,7 @@ class HealthRecordEditActivity : AppCompatActivity() {
         }
 
         if (result > 0) {
+            DraftManager.clearHealthRecordDraft(this)
             Toast.makeText(
                 this,
                 if (isEditMode) "记录已更新" else "记录已添加",
@@ -495,6 +500,51 @@ class HealthRecordEditActivity : AppCompatActivity() {
             }
             .setNegativeButton("取消", null)
             .show()
+    }
+
+    private fun restoreHealthDraft() {
+        val draft = DraftManager.getHealthRecordDraft(this) ?: return
+        DialogUtils.showConfirm(this, "恢复草稿", "检测到上次未保存的记录，是否恢复？", "恢复") {
+            if (draft.date.isNotEmpty()) {
+                selectedDate = draft.date
+                binding.tvDate.text = selectedDate
+            }
+            if (draft.weight.isNotEmpty()) binding.etWeight.setText(draft.weight)
+            if (draft.height.isNotEmpty()) binding.etHeight.setText(draft.height)
+            if (draft.systolicPressure.isNotEmpty()) binding.etSystolicPressure.setText(draft.systolicPressure)
+            if (draft.diastolicPressure.isNotEmpty()) binding.etDiastolicPressure.setText(draft.diastolicPressure)
+            if (draft.heartRate.isNotEmpty()) binding.etHeartRate.setText(draft.heartRate)
+            if (draft.bloodSugar.isNotEmpty()) binding.etBloodSugar.setText(draft.bloodSugar)
+            if (draft.sleepDuration.isNotEmpty()) binding.etSleepDuration.setText(draft.sleepDuration)
+            if (draft.waterIntake.isNotEmpty()) binding.etWaterIntake.setText(draft.waterIntake)
+            if (draft.steps.isNotEmpty()) binding.etSteps.setText(draft.steps)
+            if (draft.notes.isNotEmpty()) binding.etNotes.setText(draft.notes)
+        }
+    }
+
+    private fun saveHealthDraft() {
+        if (isEditMode) return
+        val draft = DraftManager.HealthRecordDraft(
+            date = selectedDate,
+            weight = binding.etWeight.text.toString(),
+            height = binding.etHeight.text.toString(),
+            systolicPressure = binding.etSystolicPressure.text.toString(),
+            diastolicPressure = binding.etDiastolicPressure.text.toString(),
+            heartRate = binding.etHeartRate.text.toString(),
+            bloodSugar = binding.etBloodSugar.text.toString(),
+            sleepDuration = binding.etSleepDuration.text.toString(),
+            waterIntake = binding.etWaterIntake.text.toString(),
+            steps = binding.etSteps.text.toString(),
+            notes = binding.etNotes.text.toString()
+        )
+        DraftManager.saveHealthRecordDraft(this, draft)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (!isEditMode) {
+            saveHealthDraft()
+        }
     }
 
     override fun onDestroy() {

@@ -168,6 +168,61 @@
                 android:textSize="15sp"
                 android:lineSpacingMultiplier="1.5" />
 
+            <!-- 复诊提醒区域 -->
+            <LinearLayout
+                android:id="@+id/layoutFollowUp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_edit_text"
+                android:padding="12dp"
+                android:layout_marginBottom="16dp"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="复诊提醒"
+                        android:textColor="@color/textPrimary"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvFollowUpCountdown"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="13sp" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvFollowUpDate"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textSize="14sp"
+                    android:textColor="@color/textSecondary" />
+
+                <Button
+                    android:id="@+id/btnAddFollowUpCalendar"
+                    android:layout_width="match_parent"
+                    android:layout_height="36dp"
+                    android:layout_marginTop="8dp"
+                    android:text="加入日历提醒"
+                    android:textSize="13sp"
+                    android:textColor="#2196F3"
+                    android:background="@drawable/bg_button_assessment"
+                    android:stateListAnimator="@null" />
+
+            </LinearLayout>
+
             <!-- 生成健康评估按钮 -->
             <!-- 病历卡照片区域 -->
             <LinearLayout
@@ -254,6 +309,19 @@
             android:textSize="16sp"
             android:textColor="@android:color/white"
             android:background="@drawable/bg_button_danger"
+            android:stateListAnimator="@null" />
+
+        <Button
+            android:id="@+id/btnSaveTemplate"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:text="模板"
+            android:textSize="16sp"
+            android:textColor="@android:color/white"
+            android:background="@drawable/bg_button_secondary"
             android:stateListAnimator="@null" />
 
         <Button

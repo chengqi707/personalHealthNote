@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.MenuItem
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -18,6 +19,7 @@ import com.chengqi.personalhealthnote.database.DatabaseHelper
 import com.chengqi.personalhealthnote.databinding.ActivityMedicalRecordEditBinding
 import com.chengqi.personalhealthnote.entity.MedicalRecord
 import com.chengqi.personalhealthnote.utils.ImageCompressUtils
+import com.chengqi.personalhealthnote.utils.CalendarHelper
 import com.chengqi.personalhealthnote.utils.DialogUtils
 import com.chengqi.personalhealthnote.utils.ToastUtils
 import org.json.JSONArray
@@ -33,8 +35,11 @@ class MedicalRecordEditActivity : AppCompatActivity() {
     private lateinit var imageAdapter: ImageAdapter
     private var recordId: Long = 0
     private var selectedMedicalTime: String = ""
+    private var selectedFollowUpDate: String = ""
+    private var oldFollowUpCalendarEventId: String = ""
     private val calendar = Calendar.getInstance()
     private val dateTimeFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+    private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     private val selectedImages = mutableListOf<String>()
 
     companion object {
@@ -90,6 +95,13 @@ class MedicalRecordEditActivity : AppCompatActivity() {
         binding.tvMedicalTime.setOnClickListener { showDateTimePicker() }
         binding.btnSave.setOnClickListener { saveRecord() }
         binding.btnAddImage.setOnClickListener { checkPermissionAndPickImage() }
+        binding.tvFollowUpDate.setOnClickListener { showFollowUpDatePicker() }
+        binding.tvClearFollowUpDate.setOnClickListener {
+            selectedFollowUpDate = ""
+            binding.tvFollowUpDate.text = "请选择复诊日期（可选）"
+            binding.tvFollowUpDate.setTextColor(getColor(R.color.textHint))
+            binding.tvClearFollowUpDate.visibility = View.GONE
+        }
 
         setupMaxLengthWatcher(binding.etSymptoms, 500)
         setupMaxLengthWatcher(binding.etDiagnosisResult, 500)
@@ -129,6 +141,15 @@ class MedicalRecordEditActivity : AppCompatActivity() {
         binding.etCheckItems.setText(record.checkItems)
         binding.etMedicines.setText(record.medicines)
 
+        // 复诊日期
+        oldFollowUpCalendarEventId = record.followUpCalendarEventId
+        if (record.followUpDate.isNotEmpty()) {
+            selectedFollowUpDate = record.followUpDate
+            binding.tvFollowUpDate.text = selectedFollowUpDate
+            binding.tvFollowUpDate.setTextColor(getColor(R.color.textPrimary))
+            binding.tvClearFollowUpDate.visibility = View.VISIBLE
+        }
+
         // 加载已有图片
         if (record.imagePaths.isNotEmpty()) {
             try {
@@ -142,6 +163,25 @@ class MedicalRecordEditActivity : AppCompatActivity() {
                 e.printStackTrace()
             }
         }
+    }
+
+    private fun showFollowUpDatePicker() {
+        val cal = Calendar.getInstance()
+        val datePickerDialog = DatePickerDialog(
+            this,
+            { _, year, month, dayOfMonth ->
+                cal.set(year, month, dayOfMonth)
+                selectedFollowUpDate = dateFormat.format(cal.time)
+                binding.tvFollowUpDate.text = selectedFollowUpDate
+                binding.tvFollowUpDate.setTextColor(getColor(R.color.textPrimary))
+                binding.tvClearFollowUpDate.visibility = View.VISIBLE
+            },
+            cal.get(Calendar.YEAR),
+            cal.get(Calendar.MONTH),
+            cal.get(Calendar.DAY_OF_MONTH)
+        )
+        datePickerDialog.datePicker.minDate = System.currentTimeMillis()
+        datePickerDialog.show()
     }
 
     private fun showDateTimePicker() {
@@ -231,11 +271,27 @@ class MedicalRecordEditActivity : AppCompatActivity() {
             checkItems = checkItems,
             medicines = medicines,
             imagePaths = imageJson,
-            updateTime = System.currentTimeMillis()
+            updateTime = System.currentTimeMillis(),
+            followUpDate = selectedFollowUpDate
         )
 
         val result = dbHelper.updateMedicalRecord(record)
         if (result > 0) {
+            // 处理复诊日历事件
+            try {
+                if (oldFollowUpCalendarEventId.isNotEmpty()) {
+                    CalendarHelper.deleteFollowUpEvent(this, oldFollowUpCalendarEventId)
+                }
+                if (selectedFollowUpDate.isNotEmpty()) {
+                    val eventId = CalendarHelper.addFollowUpEvent(this, record)
+                    if (eventId.isNotEmpty()) {
+                        val updatedRecord = record.copy(followUpCalendarEventId = eventId)
+                        dbHelper.updateMedicalRecord(updatedRecord)
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
             ToastUtils.show(this, "修改成功")
             setResult(RESULT_OK)
             finish()

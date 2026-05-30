@@ -7,6 +7,8 @@ import android.database.sqlite.SQLiteOpenHelper
 import com.chengqi.personalhealthnote.entity.HealthRecord
 import com.chengqi.personalhealthnote.entity.MedicalRecord
 import com.chengqi.personalhealthnote.entity.MedicineReminder
+import com.chengqi.personalhealthnote.entity.PhysicalExamReport
+import com.chengqi.personalhealthnote.entity.UserProfile
 
 /**
  * SQLite数据库帮助类
@@ -21,7 +23,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
 
     companion object {
         const val DATABASE_NAME = "health_note.db"
-        private const val DATABASE_VERSION = 7
+        private const val DATABASE_VERSION = 8
 
         // 健康记录表
         private const val TABLE_HEALTH_RECORD = "health_record"
@@ -60,6 +62,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         private const val COLUMN_MR_HEALTH_EVALUATION = "health_evaluation"
         private const val COLUMN_MR_LIFE_SUGGESTION = "life_suggestion"
         private const val COLUMN_MR_IMAGE_PATHS = "image_paths"
+        private const val COLUMN_MR_FOLLOW_UP_DATE = "follow_up_date"
+        private const val COLUMN_MR_FOLLOW_UP_CALENDAR_EVENT_ID = "follow_up_calendar_event_id"
         private const val COLUMN_MEDICINE_NAME = "medicine_name"
         private const val COLUMN_DOSAGE = "dosage"
         private const val COLUMN_UNIT = "unit"
@@ -78,6 +82,26 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         // private const val COLUMN_IS_SYNC = "is_sync"
         // private const val COLUMN_DELETE_FLAG = "delete_flag"
         private const val COLUMN_CALENDAR_EVENT_IDS = "calendar_event_ids"
+
+        // 用户档案表
+        private const val TABLE_USER_PROFILE = "user_profile"
+        private const val COLUMN_UP_GENDER = "gender"
+        private const val COLUMN_UP_BIRTH_DATE = "birth_date"
+        private const val COLUMN_UP_HEIGHT = "height"
+        private const val COLUMN_UP_WEIGHT = "weight"
+        private const val COLUMN_UP_ALLERGIES = "allergies"
+        private const val COLUMN_UP_FAMILY_HISTORY = "family_history"
+        private const val COLUMN_UP_CHRONIC_DISEASES = "chronic_diseases"
+
+        // 体检报告表
+        private const val TABLE_PHYSICAL_EXAM_REPORT = "physical_exam_report"
+        private const val COLUMN_PER_EXAM_DATE = "exam_date"
+        private const val COLUMN_PER_HOSPITAL = "hospital"
+        private const val COLUMN_PER_REPORT_TITLE = "report_title"
+        private const val COLUMN_PER_IMAGE_PATHS = "image_paths"
+        private const val COLUMN_PER_PARSED_INDICATORS = "parsed_indicators"
+        private const val COLUMN_PER_ABNORMAL_SUMMARY = "abnormal_summary"
+        private const val COLUMN_PER_AI_SUGGESTION = "ai_suggestion"
 
         // 创建健康记录表的SQL
         private const val CREATE_HEALTH_RECORD_TABLE = """
@@ -145,12 +169,48 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
                 $COLUMN_MR_IMAGE_PATHS TEXT DEFAULT ''
             )
         """
+
+        // 创建用户档案表的SQL
+        private const val CREATE_USER_PROFILE_TABLE = """
+            CREATE TABLE IF NOT EXISTS $TABLE_USER_PROFILE (
+                $COLUMN_ID INTEGER PRIMARY KEY,
+                $COLUMN_UP_GENDER TEXT DEFAULT '',
+                $COLUMN_UP_BIRTH_DATE TEXT DEFAULT '',
+                $COLUMN_UP_HEIGHT REAL DEFAULT 0,
+                $COLUMN_UP_WEIGHT REAL DEFAULT 0,
+                $COLUMN_UP_ALLERGIES TEXT DEFAULT '',
+                $COLUMN_UP_FAMILY_HISTORY TEXT DEFAULT '',
+                $COLUMN_UP_CHRONIC_DISEASES TEXT DEFAULT '',
+                $COLUMN_UPDATE_TIME INTEGER DEFAULT 0,
+                $COLUMN_IS_SYNC INTEGER DEFAULT 0
+            )
+        """
+
+        // 创建体检报告表的SQL
+        private const val CREATE_PHYSICAL_EXAM_REPORT_TABLE = """
+            CREATE TABLE IF NOT EXISTS $TABLE_PHYSICAL_EXAM_REPORT (
+                $COLUMN_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                $COLUMN_PER_EXAM_DATE TEXT NOT NULL,
+                $COLUMN_PER_HOSPITAL TEXT DEFAULT '',
+                $COLUMN_PER_REPORT_TITLE TEXT DEFAULT '',
+                $COLUMN_PER_IMAGE_PATHS TEXT DEFAULT '',
+                $COLUMN_PER_PARSED_INDICATORS TEXT DEFAULT '',
+                $COLUMN_PER_ABNORMAL_SUMMARY TEXT DEFAULT '',
+                $COLUMN_PER_AI_SUGGESTION TEXT DEFAULT '',
+                $COLUMN_CREATE_TIME INTEGER DEFAULT 0,
+                $COLUMN_UPDATE_TIME INTEGER DEFAULT 0,
+                $COLUMN_IS_SYNC INTEGER DEFAULT 0,
+                $COLUMN_DELETE_FLAG INTEGER DEFAULT 0
+            )
+        """
     }
 
     override fun onCreate(db: SQLiteDatabase?) {
         db?.execSQL(CREATE_HEALTH_RECORD_TABLE)
         db?.execSQL(CREATE_MEDICINE_REMINDER_TABLE)
         db?.execSQL(CREATE_MEDICAL_RECORD_TABLE)
+        db?.execSQL(CREATE_USER_PROFILE_TABLE)
+        db?.execSQL(CREATE_PHYSICAL_EXAM_REPORT_TABLE)
     }
 
     override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
@@ -183,6 +243,13 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             db?.execSQL("ALTER TABLE $TABLE_HEALTH_RECORD ADD COLUMN $COLUMN_HEIGHT REAL DEFAULT 0")
             db?.execSQL("ALTER TABLE $TABLE_HEALTH_RECORD ADD COLUMN $COLUMN_HEALTH_EVALUATION TEXT")
             db?.execSQL("ALTER TABLE $TABLE_HEALTH_RECORD ADD COLUMN $COLUMN_LIFE_SUGGESTION TEXT")
+        }
+        if (oldVersion < 8) {
+            // 版本7升级到版本8，新增用户档案表、就医记录复诊日期字段、体检报告表
+            db?.execSQL(CREATE_USER_PROFILE_TABLE)
+            db?.execSQL("ALTER TABLE $TABLE_MEDICAL_RECORD ADD COLUMN $COLUMN_MR_FOLLOW_UP_DATE TEXT DEFAULT ''")
+            db?.execSQL("ALTER TABLE $TABLE_MEDICAL_RECORD ADD COLUMN $COLUMN_MR_FOLLOW_UP_CALENDAR_EVENT_ID TEXT DEFAULT ''")
+            db?.execSQL(CREATE_PHYSICAL_EXAM_REPORT_TABLE)
         }
     }
 
@@ -1039,6 +1106,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             put(COLUMN_UPDATE_TIME, record.updateTime)
             put(COLUMN_MR_HEALTH_EVALUATION, record.healthEvaluation)
             put(COLUMN_MR_LIFE_SUGGESTION, record.lifeSuggestion)
+            put(COLUMN_MR_FOLLOW_UP_DATE, record.followUpDate)
+            put(COLUMN_MR_FOLLOW_UP_CALENDAR_EVENT_ID, record.followUpCalendarEventId)
         }
         return db.insert(TABLE_MEDICAL_RECORD, null, values)
     }
@@ -1093,6 +1162,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             put(COLUMN_UPDATE_TIME, System.currentTimeMillis())
             put(COLUMN_MR_HEALTH_EVALUATION, null as String?)
             put(COLUMN_MR_LIFE_SUGGESTION, null as String?)
+            put(COLUMN_MR_FOLLOW_UP_DATE, record.followUpDate)
+            put(COLUMN_MR_FOLLOW_UP_CALENDAR_EVENT_ID, record.followUpCalendarEventId)
         }
         return db.update(
             TABLE_MEDICAL_RECORD,
@@ -1272,7 +1343,9 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             createTime = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_CREATE_TIME)),
             updateTime = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_UPDATE_TIME)),
             healthEvaluation = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MR_HEALTH_EVALUATION)),
-            lifeSuggestion = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MR_LIFE_SUGGESTION))
+            lifeSuggestion = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MR_LIFE_SUGGESTION)),
+            followUpDate = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MR_FOLLOW_UP_DATE)) ?: "",
+            followUpCalendarEventId = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MR_FOLLOW_UP_CALENDAR_EVENT_ID)) ?: ""
         )
     }
 
@@ -1455,8 +1528,6 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         db.beginTransaction()
         try {
             for (reminder in reminders) {
-                // 用药提醒没有唯一的业务键，所以用ID匹配？或者用medicineName + remindTime1？
-                // 这里简化处理，直接比较更新时间，如果服务器的更新时间晚，就更新或者插入
                 val existingReminder = getMedicineReminderById(reminder.id)
                 if (existingReminder != null) {
                     if (reminder.updateTime > existingReminder.updateTime) {
@@ -1523,5 +1594,149 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             db.endTransaction()
         }
         return successCount
+    }
+
+    // ==================== 用户档案 CRUD 操作 ====================
+
+    fun getUserProfile(): UserProfile? {
+        val db = readableDatabase
+        val cursor = db.query(
+            TABLE_USER_PROFILE,
+            null,
+            "$COLUMN_ID = ?",
+            arrayOf("1"),
+            null,
+            null,
+            null
+        )
+        return if (cursor.moveToFirst()) {
+            UserProfile(
+                id = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_ID)),
+                gender = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_UP_GENDER)) ?: "",
+                birthDate = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_UP_BIRTH_DATE)) ?: "",
+                height = cursor.getFloat(cursor.getColumnIndexOrThrow(COLUMN_UP_HEIGHT)),
+                weight = cursor.getFloat(cursor.getColumnIndexOrThrow(COLUMN_UP_WEIGHT)),
+                allergies = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_UP_ALLERGIES)) ?: "",
+                familyHistory = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_UP_FAMILY_HISTORY)) ?: "",
+                chronicDiseases = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_UP_CHRONIC_DISEASES)) ?: "",
+                updateTime = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_UPDATE_TIME)),
+                isSync = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_IS_SYNC))
+            )
+        } else {
+            null
+        }.also {
+            cursor.close()
+        }
+    }
+
+    fun saveUserProfile(profile: UserProfile): Long {
+        val db = writableDatabase
+        val values = ContentValues().apply {
+            put(COLUMN_ID, 1)
+            put(COLUMN_UP_GENDER, profile.gender)
+            put(COLUMN_UP_BIRTH_DATE, profile.birthDate)
+            put(COLUMN_UP_HEIGHT, profile.height)
+            put(COLUMN_UP_WEIGHT, profile.weight)
+            put(COLUMN_UP_ALLERGIES, profile.allergies)
+            put(COLUMN_UP_FAMILY_HISTORY, profile.familyHistory)
+            put(COLUMN_UP_CHRONIC_DISEASES, profile.chronicDiseases)
+            put(COLUMN_UPDATE_TIME, profile.updateTime)
+            put(COLUMN_IS_SYNC, 0)
+        }
+        // 尝试更新，若不存在则插入
+        val updated = db.update(TABLE_USER_PROFILE, values, "$COLUMN_ID = ?", arrayOf("1"))
+        return if (updated > 0) updated.toLong() else db.insert(TABLE_USER_PROFILE, null, values)
+    }
+
+    // ==================== 体检报告 CRUD 操作 ====================
+
+    fun insertPhysicalExamReport(report: PhysicalExamReport): Long {
+        val db = writableDatabase
+        val values = ContentValues().apply {
+            put(COLUMN_PER_EXAM_DATE, report.examDate)
+            put(COLUMN_PER_HOSPITAL, report.hospital)
+            put(COLUMN_PER_REPORT_TITLE, report.reportTitle)
+            put(COLUMN_PER_IMAGE_PATHS, report.imagePaths)
+            put(COLUMN_PER_PARSED_INDICATORS, report.parsedIndicators)
+            put(COLUMN_PER_ABNORMAL_SUMMARY, report.abnormalSummary)
+            put(COLUMN_PER_AI_SUGGESTION, report.aiSuggestion)
+            put(COLUMN_CREATE_TIME, report.createTime)
+            put(COLUMN_UPDATE_TIME, report.updateTime)
+            put(COLUMN_IS_SYNC, report.isSync)
+            put(COLUMN_DELETE_FLAG, report.deleteFlag)
+        }
+        return db.insert(TABLE_PHYSICAL_EXAM_REPORT, null, values)
+    }
+
+    fun updatePhysicalExamReport(report: PhysicalExamReport): Int {
+        val db = writableDatabase
+        val values = ContentValues().apply {
+            put(COLUMN_PER_EXAM_DATE, report.examDate)
+            put(COLUMN_PER_HOSPITAL, report.hospital)
+            put(COLUMN_PER_REPORT_TITLE, report.reportTitle)
+            put(COLUMN_PER_IMAGE_PATHS, report.imagePaths)
+            put(COLUMN_PER_PARSED_INDICATORS, report.parsedIndicators)
+            put(COLUMN_PER_ABNORMAL_SUMMARY, report.abnormalSummary)
+            put(COLUMN_PER_AI_SUGGESTION, report.aiSuggestion)
+            put(COLUMN_UPDATE_TIME, System.currentTimeMillis())
+            put(COLUMN_IS_SYNC, 0)
+        }
+        return db.update(TABLE_PHYSICAL_EXAM_REPORT, values, "$COLUMN_ID = ?", arrayOf(report.id.toString()))
+    }
+
+    fun deletePhysicalExamReport(id: Long): Int {
+        val report = getPhysicalExamReportById(id)
+        report?.let {
+            if (it.imagePaths.isNotEmpty()) {
+                try {
+                    val jsonArray = org.json.JSONArray(it.imagePaths)
+                    for (i in 0 until jsonArray.length()) {
+                        val path = jsonArray.getString(i)
+                        val file = java.io.File(path)
+                        if (file.exists()) file.delete()
+                    }
+                } catch (e: Exception) { e.printStackTrace() }
+            }
+        }
+        val db = writableDatabase
+        return db.delete(TABLE_PHYSICAL_EXAM_REPORT, "$COLUMN_ID = ?", arrayOf(id.toString()))
+    }
+
+    fun getPhysicalExamReportById(id: Long): PhysicalExamReport? {
+        val db = readableDatabase
+        val cursor = db.query(TABLE_PHYSICAL_EXAM_REPORT, null, "$COLUMN_ID = ?", arrayOf(id.toString()), null, null, null)
+        return if (cursor.moveToFirst()) {
+            cursorToPhysicalExamReport(cursor)
+        } else {
+            null
+        }.also { cursor.close() }
+    }
+
+    fun getAllPhysicalExamReports(sortOrder: String = "DESC"): List<PhysicalExamReport> {
+        val reports = mutableListOf<PhysicalExamReport>()
+        val db = readableDatabase
+        val cursor = db.query(TABLE_PHYSICAL_EXAM_REPORT, null, "$COLUMN_DELETE_FLAG = 0", null, null, null, "$COLUMN_CREATE_TIME $sortOrder")
+        while (cursor.moveToNext()) {
+            reports.add(cursorToPhysicalExamReport(cursor))
+        }
+        cursor.close()
+        return reports
+    }
+
+    private fun cursorToPhysicalExamReport(cursor: android.database.Cursor): PhysicalExamReport {
+        return PhysicalExamReport(
+            id = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_ID)),
+            examDate = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_PER_EXAM_DATE)),
+            hospital = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_PER_HOSPITAL)) ?: "",
+            reportTitle = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_PER_REPORT_TITLE)) ?: "",
+            imagePaths = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_PER_IMAGE_PATHS)) ?: "",
+            parsedIndicators = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_PER_PARSED_INDICATORS)) ?: "",
+            abnormalSummary = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_PER_ABNORMAL_SUMMARY)) ?: "",
+            aiSuggestion = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_PER_AI_SUGGESTION)) ?: "",
+            createTime = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_CREATE_TIME)),
+            updateTime = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_UPDATE_TIME)),
+            isSync = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_IS_SYNC)),
+            deleteFlag = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_DELETE_FLAG))
+        )
     }
 }

@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">健康小助手</string>
+    <string-array name="gender_options">
+        <item>请选择</item>
+        <item>男</item>
+        <item>女</item>
+        <item>不愿透露</item>
+    </string-array>
 </resources>

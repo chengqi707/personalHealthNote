@@ -12,11 +12,13 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.chengqi.personalhealthnote.adapter.HealthRecordAdapter
 import com.chengqi.personalhealthnote.adapter.MedicalRecordAdapter
 import com.chengqi.personalhealthnote.adapter.MedicineReminderAdapter
+import com.chengqi.personalhealthnote.adapter.PhysicalExamReportAdapter
 import com.chengqi.personalhealthnote.database.DatabaseHelper
 import com.chengqi.personalhealthnote.databinding.ActivityMainBinding
 import com.chengqi.personalhealthnote.entity.HealthRecord
 import com.chengqi.personalhealthnote.entity.MedicalRecord
 import com.chengqi.personalhealthnote.entity.MedicineReminder
+import com.chengqi.personalhealthnote.entity.PhysicalExamReport
 import com.chengqi.personalhealthnote.network.ApiService
 import com.chengqi.personalhealthnote.utils.AlarmScheduler
 import com.chengqi.personalhealthnote.utils.CalendarHelper
@@ -36,6 +38,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var medicalRecordAdapter: MedicalRecordAdapter
     private lateinit var healthRecordAdapter: HealthRecordAdapter
     private lateinit var medicineReminderAdapter: MedicineReminderAdapter
+    private lateinit var examReportAdapter: PhysicalExamReportAdapter
 
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     private val dateTimeFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
@@ -58,6 +61,7 @@ class MainActivity : AppCompatActivity() {
         const val REQUEST_EDIT_MEDICINE = 1006
         const val REQUEST_LOGIN = 1007
         const val REQUEST_APP_LOCK = 1008
+        const val REQUEST_ADD_EXAM_REPORT = 1009
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -89,6 +93,7 @@ class MainActivity : AppCompatActivity() {
         binding.tabLayout.addTab(binding.tabLayout.newTab().setText("就医记录"))
         binding.tabLayout.addTab(binding.tabLayout.newTab().setText("健康记录"))
         binding.tabLayout.addTab(binding.tabLayout.newTab().setText("用药提醒"))
+        binding.tabLayout.addTab(binding.tabLayout.newTab().setText("体检报告"))
         binding.tabLayout.addTab(binding.tabLayout.newTab().setText("统计"))
 
         binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
@@ -103,7 +108,8 @@ class MainActivity : AppCompatActivity() {
                     0 -> showMedicalRecordTab()
                     1 -> showHealthRecordTab()
                     2 -> showMedicineReminderTab()
-                    3 -> showStatisticsTab()
+                    3 -> showExamReportTab()
+                    4 -> showStatisticsTab()
                 }
             }
             override fun onTabUnselected(tab: TabLayout.Tab?) {}
@@ -116,6 +122,7 @@ class MainActivity : AppCompatActivity() {
     private fun showMedicalRecordTab() {
         binding.recyclerViewHealthRecords.visibility = View.GONE
         binding.recyclerViewMedicineReminders.visibility = View.GONE
+        binding.recyclerViewExamReports.visibility = View.GONE
         binding.fabAdd.visibility = View.VISIBLE
         binding.fabAdd.setImageResource(android.R.drawable.ic_input_add)
         loadMedicalRecords()
@@ -124,6 +131,7 @@ class MainActivity : AppCompatActivity() {
     private fun showHealthRecordTab() {
         binding.recyclerViewHealthRecords.visibility = View.VISIBLE
         binding.recyclerViewMedicineReminders.visibility = View.GONE
+        binding.recyclerViewExamReports.visibility = View.GONE
         binding.fabAdd.visibility = View.VISIBLE
         binding.fabAdd.setImageResource(android.R.drawable.ic_input_add)
         loadHealthRecords()
@@ -132,18 +140,28 @@ class MainActivity : AppCompatActivity() {
     private fun showMedicineReminderTab() {
         binding.recyclerViewHealthRecords.visibility = View.GONE
         binding.recyclerViewMedicineReminders.visibility = View.VISIBLE
+        binding.recyclerViewExamReports.visibility = View.GONE
         binding.fabAdd.visibility = View.VISIBLE
         binding.fabAdd.setImageResource(android.R.drawable.ic_menu_add)
         loadMedicineReminders()
     }
 
+    private fun showExamReportTab() {
+        binding.recyclerViewHealthRecords.visibility = View.GONE
+        binding.recyclerViewMedicineReminders.visibility = View.GONE
+        binding.recyclerViewExamReports.visibility = View.VISIBLE
+        binding.fabAdd.visibility = View.VISIBLE
+        binding.fabAdd.setImageResource(android.R.drawable.ic_input_add)
+        loadExamReports()
+    }
+
     private fun showStatisticsTab() {
         binding.recyclerViewHealthRecords.visibility = View.GONE
         binding.recyclerViewMedicineReminders.visibility = View.GONE
+        binding.recyclerViewExamReports.visibility = View.GONE
         binding.tvEmpty.visibility = View.GONE
         binding.fabAdd.visibility = View.GONE
         startActivity(Intent(this, StatisticsActivity::class.java))
-        // 跳转后切回就医记录Tab，避免用户返回时还在统计Tab
         binding.tabLayout.getTabAt(0)?.select()
     }
 
@@ -174,16 +192,27 @@ class MainActivity : AppCompatActivity() {
 
         healthRecordAdapter = HealthRecordAdapter(
             onItemClick = { record ->
-                val intent = Intent(this, HealthRecordDetailActivity::class.java).apply {
-                    putExtra("record_id", record.id)
+                if (healthRecordAdapter.isInSelectionMode()) {
+                    healthRecordAdapter.toggleSelection(record.id)
+                } else {
+                    val intent = Intent(this, HealthRecordDetailActivity::class.java).apply {
+                        putExtra("record_id", record.id)
+                    }
+                    startActivityForResult(intent, REQUEST_EDIT_HEALTH_RECORD)
                 }
-                startActivityForResult(intent, REQUEST_EDIT_HEALTH_RECORD)
             },
             onItemLongClick = { record ->
-                showDeleteConfirmDialog(record)
+                if (healthRecordAdapter.isInSelectionMode()) {
+                    healthRecordAdapter.toggleSelection(record.id)
+                } else {
+                    showDeleteConfirmDialog(record)
+                }
                 true
             }
         )
+        healthRecordAdapter.setOnSelectionChangedListener { count ->
+            updateSelectionTitle(count)
+        }
 
         binding.recyclerViewHealthRecords.apply {
             layoutManager = LinearLayoutManager(this@MainActivity)
@@ -191,13 +220,21 @@ class MainActivity : AppCompatActivity() {
 
         medicineReminderAdapter = MedicineReminderAdapter(
             onItemClick = { reminder ->
-                val intent = Intent(this, MedicineReminderEditActivity::class.java).apply {
-                    putExtra("reminder_id", reminder.id)
+                if (medicineReminderAdapter.isInSelectionMode()) {
+                    medicineReminderAdapter.toggleSelection(reminder.id)
+                } else {
+                    val intent = Intent(this, MedicineReminderDetailActivity::class.java).apply {
+                        putExtra("reminder_id", reminder.id)
+                    }
+                    startActivityForResult(intent, REQUEST_EDIT_MEDICINE)
                 }
-                startActivityForResult(intent, REQUEST_EDIT_MEDICINE)
             },
             onItemLongClick = { reminder ->
-                showDeleteMedicineConfirmDialog(reminder)
+                if (medicineReminderAdapter.isInSelectionMode()) {
+                    medicineReminderAdapter.toggleSelection(reminder.id)
+                } else {
+                    showDeleteMedicineConfirmDialog(reminder)
+                }
                 true
             },
             onSwitchChanged = { reminder, isEnabled ->
@@ -210,10 +247,25 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         )
+        medicineReminderAdapter.setOnSelectionChangedListener { count ->
+            updateSelectionTitle(count)
+        }
 
         binding.recyclerViewMedicineReminders.apply {
             layoutManager = LinearLayoutManager(this@MainActivity)
             adapter = medicineReminderAdapter
+        }
+
+        examReportAdapter = PhysicalExamReportAdapter(
+            onItemClick = { report ->
+                val intent = Intent(this, PhysicalExamReportDetailActivity::class.java)
+                intent.putExtra("report_id", report.id)
+                startActivity(intent)
+            }
+        )
+        binding.recyclerViewExamReports.apply {
+            layoutManager = LinearLayoutManager(this@MainActivity)
+            adapter = examReportAdapter
         }
     }
 
@@ -232,6 +284,10 @@ class MainActivity : AppCompatActivity() {
                     val intent = Intent(this, MedicineReminderEditActivity::class.java)
                     startActivityForResult(intent, REQUEST_ADD_MEDICINE)
                 }
+                3 -> {
+                    val intent = Intent(this, PhysicalExamReportAddActivity::class.java)
+                    startActivityForResult(intent, REQUEST_ADD_EXAM_REPORT)
+                }
             }
         }
 
@@ -241,7 +297,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.tvSelectAll.setOnClickListener {
-            medicalRecordAdapter.selectAll()
+            when (binding.tabLayout.selectedTabPosition) {
+                0 -> medicalRecordAdapter.selectAll()
+                1 -> healthRecordAdapter.selectAll()
+                2 -> medicineReminderAdapter.selectAll()
+            }
         }
 
         binding.tvBatchDelete.setOnClickListener {
@@ -263,6 +323,7 @@ class MainActivity : AppCompatActivity() {
             0 -> "搜索医院、症状、诊断..."
             1 -> "搜索日期、备注..."
             2 -> "搜索药品名、备注..."
+            3 -> "搜索体检报告..."
             else -> "搜索..."
         }
     }
@@ -378,6 +439,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun loadExamReports() {
+        val reports = dbHelper.getAllPhysicalExamReports()
+        examReportAdapter.setData(reports)
+
+        binding.recyclerViewHealthRecords.visibility = View.GONE
+        binding.recyclerViewMedicineReminders.visibility = View.GONE
+        binding.recyclerViewExamReports.visibility = View.VISIBLE
+
+        if (reports.isEmpty()) {
+            binding.tvEmpty.visibility = View.VISIBLE
+            binding.tvEmpty.text = "暂无体检报告，点击右下角添加"
+        } else {
+            binding.tvEmpty.visibility = View.GONE
+        }
+    }
+
     // ==================== 搜索功能 ====================
 
     private var searchView: SearchView? = null
@@ -385,8 +462,21 @@ class MainActivity : AppCompatActivity() {
 
     // ==================== 批量删除 ====================
 
+    private fun isInSelectionMode(): Boolean {
+        return when (binding.tabLayout.selectedTabPosition) {
+            0 -> medicalRecordAdapter.isInSelectionMode()
+            1 -> healthRecordAdapter.isInSelectionMode()
+            2 -> medicineReminderAdapter.isInSelectionMode()
+            else -> false
+        }
+    }
+
     private fun enterSelectionMode() {
-        medicalRecordAdapter.setSelectionMode(true)
+        when (binding.tabLayout.selectedTabPosition) {
+            0 -> medicalRecordAdapter.setSelectionMode(true)
+            1 -> healthRecordAdapter.setSelectionMode(true)
+            2 -> medicineReminderAdapter.setSelectionMode(true)
+        }
         binding.fabAdd.visibility = View.GONE
         binding.layoutBatchDelete.visibility = View.VISIBLE
         invalidateOptionsMenu()
@@ -394,10 +484,22 @@ class MainActivity : AppCompatActivity() {
 
     private fun exitSelectionMode() {
         medicalRecordAdapter.setSelectionMode(false)
+        healthRecordAdapter.setSelectionMode(false)
+        medicineReminderAdapter.setSelectionMode(false)
         binding.fabAdd.visibility = View.VISIBLE
         binding.layoutBatchDelete.visibility = View.GONE
-        supportActionBar?.title = "我的就医记录"
+        updateActionBarTitle()
         invalidateOptionsMenu()
+    }
+
+    private fun updateActionBarTitle() {
+        supportActionBar?.title = when (binding.tabLayout.selectedTabPosition) {
+            0 -> "我的就医记录"
+            1 -> "健康记录"
+            2 -> "用药提醒"
+            3 -> "体检报告"
+            else -> "我的就医记录"
+        }
     }
 
     private fun updateSelectionTitle(count: Int) {
@@ -405,6 +507,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun performBatchDelete() {
+        when (binding.tabLayout.selectedTabPosition) {
+            0 -> performMedicalRecordBatchDelete()
+            1 -> performHealthRecordBatchDelete()
+            2 -> performMedicineReminderBatchDelete()
+        }
+    }
+
+    private fun performMedicalRecordBatchDelete() {
         val selectedIds = medicalRecordAdapter.getSelectedIds()
         if (selectedIds.isEmpty()) {
             ToastUtils.show(this, "请选择要删除的记录")
@@ -428,6 +538,74 @@ class MainActivity : AppCompatActivity() {
                 binding.tvEmpty.text = "暂无就医记录，点击右下角添加"
             }
             ToastUtils.show(this, "已删除 $deletedCount 条记录")
+        }
+    }
+
+    private fun performHealthRecordBatchDelete() {
+        val selectedIds = healthRecordAdapter.getSelectedIds()
+        if (selectedIds.isEmpty()) {
+            ToastUtils.show(this, "请选择要删除的记录")
+            return
+        }
+        DialogUtils.showConfirm(
+            this,
+            "批量删除确认",
+            "确定要删除选中的 ${selectedIds.size} 条健康记录吗？删除后不可恢复",
+            "确定"
+        ) {
+            var deletedCount = 0
+            selectedIds.forEach { id ->
+                val result = dbHelper.deleteHealthRecord(id)
+                if (result > 0) deletedCount++
+            }
+            healthRecordAdapter.removeRecords(selectedIds)
+            exitSelectionMode()
+            if (healthRecordAdapter.getData().isEmpty()) {
+                binding.tvEmpty.visibility = View.VISIBLE
+                binding.tvEmpty.text = "暂无健康记录，点击右下角添加"
+            }
+            ToastUtils.show(this, "已删除 $deletedCount 条记录")
+        }
+    }
+
+    private fun performMedicineReminderBatchDelete() {
+        val selectedIds = medicineReminderAdapter.getSelectedIds()
+        if (selectedIds.isEmpty()) {
+            ToastUtils.show(this, "请选择要删除的提醒")
+            return
+        }
+        DialogUtils.showConfirm(
+            this,
+            "批量删除确认",
+            "确定要删除选中的 ${selectedIds.size} 条用药提醒吗？删除后不可恢复",
+            "确定"
+        ) {
+            var deletedCount = 0
+            val reminders = medicineReminderAdapter.getData()
+            selectedIds.forEach { id ->
+                val result = dbHelper.deleteMedicineReminder(id)
+                if (result > 0) {
+                    deletedCount++
+                    val reminder = reminders.find { it.id == id }
+                    reminder?.let {
+                        try { AlarmScheduler.cancelReminder(this, it) } catch (_: Exception) {}
+                        try {
+                            if (it.calendarEventIds.isNotEmpty()) {
+                                CalendarHelper.deleteCalendarEvents(this, it.calendarEventIds)
+                            } else {
+                                CalendarHelper.deleteCalendarEventsByMedicineName(this, it.medicineName)
+                            }
+                        } catch (_: Exception) {}
+                    }
+                }
+            }
+            medicineReminderAdapter.removeRecords(selectedIds)
+            exitSelectionMode()
+            if (medicineReminderAdapter.getData().isEmpty()) {
+                binding.tvEmpty.visibility = View.VISIBLE
+                binding.tvEmpty.text = "暂无用药提醒，点击右下角添加"
+            }
+            ToastUtils.show(this, "已删除 $deletedCount 条提醒")
         }
     }
 
@@ -548,13 +726,11 @@ class MainActivity : AppCompatActivity() {
             })
         }
 
-        // 批量删除模式下隐藏搜索和筛选，显示全选
         val sortItem = menu?.findItem(R.id.action_sort)
         val filterItem = menu?.findItem(R.id.action_filter)
         val batchDeleteItem = menu?.findItem(R.id.action_batch_delete)
         val syncItem = menu?.findItem(R.id.action_sync)
 
-        // 更新排序菜单图标和标题
         val currentSortOrder = when (binding.tabLayout.selectedTabPosition) {
             0 -> medicalRecordSortOrder
             1 -> healthRecordSortOrder
@@ -563,7 +739,7 @@ class MainActivity : AppCompatActivity() {
         sortItem?.setIcon(if (currentSortOrder == 0) R.drawable.ic_sort_desc else R.drawable.ic_sort_asc)
         sortItem?.title = if (currentSortOrder == 0) "排序：由近到远" else "排序：由远到近"
 
-        if (medicalRecordAdapter.isInSelectionMode()) {
+        if (isInSelectionMode()) {
             searchMenuItem?.isVisible = false
             sortItem?.isVisible = false
             filterItem?.isVisible = false
@@ -571,9 +747,9 @@ class MainActivity : AppCompatActivity() {
             syncItem?.isVisible = false
         } else {
             searchMenuItem?.isVisible = true
-            sortItem?.isVisible = binding.tabLayout.selectedTabPosition < 3
+            sortItem?.isVisible = binding.tabLayout.selectedTabPosition < 4
             filterItem?.isVisible = binding.tabLayout.selectedTabPosition == 0
-            batchDeleteItem?.isVisible = binding.tabLayout.selectedTabPosition == 0
+            batchDeleteItem?.isVisible = binding.tabLayout.selectedTabPosition < 3
             syncItem?.isVisible = true
         }
 
@@ -607,7 +783,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        if (medicalRecordAdapter.isInSelectionMode()) {
+        if (isInSelectionMode()) {
             exitSelectionMode()
         } else if (currentSearchQuery.isNotEmpty()) {
             currentSearchQuery = ""
@@ -621,7 +797,7 @@ class MainActivity : AppCompatActivity() {
     private fun setupBackPressedHandler() {
         onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (medicalRecordAdapter.isInSelectionMode()) {
+                if (isInSelectionMode()) {
                     exitSelectionMode()
                 } else if (currentSearchQuery.isNotEmpty()) {
                     currentSearchQuery = ""
@@ -736,6 +912,9 @@ class MainActivity : AppCompatActivity() {
                 }
                 REQUEST_ADD_MEDICINE, REQUEST_EDIT_MEDICINE -> {
                     loadMedicineReminders()
+                }
+                REQUEST_ADD_EXAM_REPORT -> {
+                    loadExamReports()
                 }
             }
         }

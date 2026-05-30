@@ -208,9 +208,10 @@ class HealthRecordDetailActivity : AppCompatActivity() {
 
         // 获取历史记录（最近30天）
         val historyRecords = dbHelper.getRecentHealthRecords(30)
+        val userProfile = dbHelper.getUserProfile()
 
         // 调用AI服务
-        aiHealthService.generateHealthAssessment(currentRecord, historyRecords) { success, message, result ->
+        aiHealthService.generateHealthAssessment(currentRecord, historyRecords, userProfile) { success, message, result ->
             runOnUiThread {
                 // 隐藏加载状态
                 binding.layoutLoading.visibility = View.GONE

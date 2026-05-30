@@ -3,6 +3,7 @@ package com.chengqi.personalhealthnote.service
 import android.util.Log
 import com.chengqi.personalhealthnote.BuildConfig
 import com.chengqi.personalhealthnote.entity.HealthRecord
+import com.chengqi.personalhealthnote.entity.UserProfile
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody // 导入扩展函数
@@ -39,6 +40,7 @@ class AiHealthService {
     fun generateHealthAssessment(
         record: HealthRecord,
         historyRecords: List<HealthRecord> = emptyList(),
+        userProfile: UserProfile? = null,
         callback: (Boolean, String, HealthAssessmentResult?) -> Unit
     ) {
         // 先检查API Key是否配置
@@ -48,7 +50,7 @@ class AiHealthService {
         }
 
         // 构建提示词
-        val prompt = buildPrompt(record, historyRecords)
+        val prompt = buildPrompt(record, historyRecords, userProfile)
 
         // 构建请求体
         val requestBody = JSONObject().apply {
@@ -143,8 +145,15 @@ class AiHealthService {
     /**
      * 构建提示词
      */
-    private fun buildPrompt(record: HealthRecord, historyRecords: List<HealthRecord>): String {
+    private fun buildPrompt(record: HealthRecord, historyRecords: List<HealthRecord>, userProfile: UserProfile?): String {
         val sb = StringBuilder()
+
+        // 拼接用户档案上下文
+        val profileText = userProfile?.toPromptText()
+        if (!profileText.isNullOrEmpty()) {
+            sb.append(profileText)
+            sb.append("\n")
+        }
 
         sb.append("当前健康记录数据：\n")
         sb.append("记录日期：${record.recordDate}\n")

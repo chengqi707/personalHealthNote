@@ -46,6 +46,7 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun setupAccountSection() {
         updateAccountUI()
+        updateProfileUI()
 
         binding.itemAccount.setOnClickListener {
             if (TokenManager.isLogin(this)) {
@@ -66,6 +67,13 @@ class SettingsActivity : AppCompatActivity() {
                 )
             }
         }
+
+        binding.itemUserProfile.setOnClickListener {
+            startActivityForResult(
+                Intent(this, UserProfileActivity::class.java),
+                REQUEST_USER_PROFILE
+            )
+        }
     }
 
     private fun updateAccountUI() {
@@ -75,6 +83,17 @@ class SettingsActivity : AppCompatActivity() {
             "用户ID: ${TokenManager.getUserId(this)}"
         } else {
             "登录后可使用云端同步功能"
+        }
+    }
+
+    private fun updateProfileUI() {
+        val profile = dbHelper.getUserProfile()
+        if (profile != null && !profile.isEmpty()) {
+            binding.tvUserProfileTitle.text = "个人健康档案（已填写）"
+            binding.tvUserProfileSummary.text = "${profile.getGenderText()}${if (profile.getAge() > 0) " · ${profile.getAge()}岁" else ""}"
+        } else {
+            binding.tvUserProfileTitle.text = "个人健康档案"
+            binding.tvUserProfileSummary.text = "填写后AI评估更精准"
         }
     }
 
@@ -323,6 +342,9 @@ class SettingsActivity : AppCompatActivity() {
         if (requestCode == REQUEST_SET_PIN && resultCode == RESULT_OK) {
             updateSecurityUI()
         }
+        if (requestCode == REQUEST_USER_PROFILE && resultCode == RESULT_OK) {
+            updateProfileUI()
+        }
     }
 
     override fun onDestroy() {
@@ -333,5 +355,6 @@ class SettingsActivity : AppCompatActivity() {
     companion object {
         private const val REQUEST_LOGIN = 3001
         private const val REQUEST_SET_PIN = 3002
+        private const val REQUEST_USER_PROFILE = 3003
     }
 }

@@ -1,18 +1,17 @@
 package com.chengqi.personalhealthnote.adapter
 
+import android.graphics.Paint
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.cardview.widget.CardView
+import android.widget.CheckBox
 import android.widget.Switch
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.chengqi.personalhealthnote.R
 import com.chengqi.personalhealthnote.entity.MedicineReminder
 
-/**
- * 用药提醒适配器
- * 用于RecyclerView显示用药提醒列表
- */
 class MedicineReminderAdapter(
     private var reminders: MutableList<MedicineReminder> = mutableListOf(),
     private val onItemClick: ((MedicineReminder) -> Unit)? = null,
@@ -20,10 +19,43 @@ class MedicineReminderAdapter(
     private val onSwitchChanged: ((MedicineReminder, Boolean) -> Unit)? = null
 ) : RecyclerView.Adapter<MedicineReminderAdapter.ViewHolder>() {
 
-    /**
-     * ViewHolder内部类
-     * 缓存Item视图引用
-     */
+    private var isSelectionMode = false
+    private val selectedIds = mutableSetOf<Long>()
+    private var onSelectionChanged: ((Int) -> Unit)? = null
+
+    fun setOnSelectionChangedListener(listener: (Int) -> Unit) {
+        onSelectionChanged = listener
+    }
+
+    fun setSelectionMode(enabled: Boolean) {
+        if (isSelectionMode == enabled) return
+        isSelectionMode = enabled
+        if (!enabled) selectedIds.clear()
+        notifyDataSetChanged()
+    }
+
+    fun isInSelectionMode(): Boolean = isSelectionMode
+
+    fun getSelectedIds(): Set<Long> = selectedIds.toSet()
+
+    fun toggleSelection(id: Long) {
+        if (selectedIds.contains(id)) {
+            selectedIds.remove(id)
+        } else {
+            selectedIds.add(id)
+        }
+        val pos = reminders.indexOfFirst { it.id == id }
+        if (pos != -1) notifyItemChanged(pos)
+        onSelectionChanged?.invoke(selectedIds.size)
+    }
+
+    fun selectAll() {
+        selectedIds.clear()
+        selectedIds.addAll(reminders.map { it.id })
+        notifyDataSetChanged()
+        onSelectionChanged?.invoke(selectedIds.size)
+    }
+
     inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val tvMedicineName: TextView = itemView.findViewById(R.id.tvMedicineName)
         val tvDosage: TextView = itemView.findViewById(R.id.tvDosage)
@@ -32,35 +64,31 @@ class MedicineReminderAdapter(
         val tvMealTime: TextView = itemView.findViewById(R.id.tvMealTime)
         val tvDateRange: TextView = itemView.findViewById(R.id.tvDateRange)
         val switchEnable: Switch = itemView.findViewById(R.id.switchEnable)
+        val cbSelect: CheckBox = itemView.findViewById(R.id.cbSelect)
+        val cardView: CardView = itemView.findViewById(R.id.cardView)
 
         init {
-            // 设置点击事件（不包括Switch）
             itemView.setOnClickListener {
                 val position = adapterPosition
                 if (position != RecyclerView.NO_POSITION) {
-                    onItemClick?.invoke(reminders[position])
+                    if (isSelectionMode) {
+                        toggleSelection(reminders[position].id)
+                    } else {
+                        onItemClick?.invoke(reminders[position])
+                    }
                 }
             }
-
-            // 设置长按事件
             itemView.setOnLongClickListener {
                 val position = adapterPosition
                 if (position != RecyclerView.NO_POSITION) {
-                    onItemLongClick?.invoke(reminders[position]) ?: false
+                    if (isSelectionMode) {
+                        toggleSelection(reminders[position].id)
+                        true
+                    } else {
+                        onItemLongClick?.invoke(reminders[position]) ?: false
+                    }
                 } else {
                     false
-                }
-            }
-
-            // 设置Switch切换监听
-            switchEnable.setOnCheckedChangeListener { _, isChecked ->
-                val position = adapterPosition
-                if (position != RecyclerView.NO_POSITION) {
-                    val reminder = reminders[position]
-                    // 只有当状态真正改变时才回调
-                    if (reminder.isEnabled != isChecked) {
-                        onSwitchChanged?.invoke(reminder, isChecked)
-                    }
                 }
             }
         }
@@ -75,31 +103,42 @@ class MedicineReminderAdapter(
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val reminder = reminders[position]
 
-        // 设置药品名称
         holder.tvMedicineName.text = reminder.medicineName
-
-        // 设置剂量
         holder.tvDosage.text = reminder.getFullDosage()
-
-        // 设置频率
         holder.tvFrequency.text = reminder.getFrequencyText()
-
-        // 设置提醒时间（显示所有时间）
-        val times = reminder.getAllRemindTimes()
-        holder.tvRemindTime.text = times.joinToString(", ")
-
-        // 设置服用时间
+        holder.tvRemindTime.text = reminder.getAllRemindTimes().joinToString(", ")
         holder.tvMealTime.text = reminder.getMealTimeText()
-
-        // 设置日期范围
         val endDateText = reminder.endDate ?: "长期"
         holder.tvDateRange.text = "${reminder.startDate} 至 $endDateText"
 
-        // 设置开关状态（先移除监听器避免触发回调）
+        // 禁用状态视觉反馈
+        val disabledColor = holder.itemView.context.getColor(R.color.textHint)
+        val enabledColor = holder.itemView.context.getColor(R.color.textPrimary)
+        val enabledSecondaryColor = holder.itemView.context.getColor(R.color.textSecondary)
+
+        if (reminder.isEnabled) {
+            holder.tvMedicineName.setTextColor(enabledColor)
+            holder.tvMedicineName.paintFlags = holder.tvMedicineName.paintFlags and Paint.STRIKE_THRU_TEXT_FLAG.inv()
+            holder.tvDosage.setTextColor(enabledSecondaryColor)
+            holder.tvFrequency.setTextColor(enabledSecondaryColor)
+            holder.tvRemindTime.setTextColor(enabledSecondaryColor)
+            holder.tvMealTime.setTextColor(enabledSecondaryColor)
+            holder.tvDateRange.setTextColor(enabledSecondaryColor)
+            holder.cardView.alpha = 1.0f
+        } else {
+            holder.tvMedicineName.setTextColor(disabledColor)
+            holder.tvMedicineName.paintFlags = holder.tvMedicineName.paintFlags or Paint.STRIKE_THRU_TEXT_FLAG
+            holder.tvMedicineName.text = "${reminder.medicineName}（已停用）"
+            holder.tvDosage.setTextColor(disabledColor)
+            holder.tvFrequency.setTextColor(disabledColor)
+            holder.tvRemindTime.setTextColor(disabledColor)
+            holder.tvMealTime.setTextColor(disabledColor)
+            holder.tvDateRange.setTextColor(disabledColor)
+            holder.cardView.alpha = 0.6f
+        }
+
         holder.switchEnable.setOnCheckedChangeListener(null)
         holder.switchEnable.isChecked = reminder.isEnabled
-
-        // 重新设置监听器
         holder.switchEnable.setOnCheckedChangeListener { _, isChecked ->
             val pos = holder.adapterPosition
             if (pos != RecyclerView.NO_POSITION) {
@@ -109,33 +148,25 @@ class MedicineReminderAdapter(
                 }
             }
         }
+
+        holder.cbSelect.visibility = if (isSelectionMode) View.VISIBLE else View.GONE
+        holder.cbSelect.isChecked = selectedIds.contains(reminder.id)
+        holder.cbSelect.setOnClickListener {
+            toggleSelection(reminder.id)
+        }
+
+        // 选择模式下隐藏开关
+        holder.switchEnable.visibility = if (isSelectionMode) View.GONE else View.VISIBLE
     }
 
     override fun getItemCount(): Int = reminders.size
 
-    /**
-     * 设置数据列表（全新替换）
-     * @param newReminders 新的数据列表
-     */
     fun setData(newReminders: List<MedicineReminder>) {
         reminders.clear()
         reminders.addAll(newReminders)
         notifyDataSetChanged()
     }
 
-    /**
-     * 添加单条提醒
-     * @param reminder 用药提醒
-     */
-    fun addReminder(reminder: MedicineReminder) {
-        reminders.add(0, reminder)
-        notifyItemInserted(0)
-    }
-
-    /**
-     * 更新单条提醒
-     * @param reminder 用药提醒
-     */
     fun updateReminder(reminder: MedicineReminder) {
         val position = reminders.indexOfFirst { it.id == reminder.id }
         if (position != -1) {
@@ -144,23 +175,6 @@ class MedicineReminderAdapter(
         }
     }
 
-    /**
-     * 删除单条提醒
-     * @param id 提醒ID
-     */
-    fun removeReminder(id: Long) {
-        val position = reminders.indexOfFirst { it.id == id }
-        if (position != -1) {
-            reminders.removeAt(position)
-            notifyItemRemoved(position)
-        }
-    }
-
-    /**
-     * 更新提醒启用状态
-     * @param id 提醒ID
-     * @param isEnabled 是否启用
-     */
     fun updateReminderStatus(id: Long, isEnabled: Boolean) {
         val position = reminders.indexOfFirst { it.id == id }
         if (position != -1) {
@@ -170,18 +184,10 @@ class MedicineReminderAdapter(
         }
     }
 
-    /**
-     * 获取所有数据
-     * @return 用药提醒列表
-     */
-    fun getData(): List<MedicineReminder> = reminders.toList()
-
-    /**
-     * 清空所有数据
-     */
-    fun clearData() {
-        val size = reminders.size
-        reminders.clear()
-        notifyItemRangeRemoved(0, size)
+    fun removeRecords(ids: Set<Long>) {
+        reminders.removeAll { ids.contains(it.id) }
+        notifyDataSetChanged()
     }
+
+    fun getData(): List<MedicineReminder> = reminders.toList()
 }
