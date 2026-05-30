@@ -24,6 +24,10 @@ class PhysicalExamReportDetailActivity : AppCompatActivity() {
     private val imagePaths = mutableListOf<String>()
     private lateinit var imageAdapter: ImageAdapter
 
+    companion object {
+        private const val REQUEST_EDIT_REPORT = 5001
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityPhysicalExamReportDetailBinding.inflate(layoutInflater)
@@ -55,6 +59,7 @@ class PhysicalExamReportDetailActivity : AppCompatActivity() {
         binding.rvImages.adapter = imageAdapter
         binding.rvImages.layoutManager = GridLayoutManager(this, 3)
 
+        binding.btnEdit.setOnClickListener { showEdit() }
         binding.btnDelete.setOnClickListener { showDeleteConfirm() }
         loadReportData()
     }
@@ -130,6 +135,19 @@ class PhysicalExamReportDetailActivity : AppCompatActivity() {
             }
         } else {
             binding.layoutImages.visibility = View.GONE
+        }
+    }
+
+    private fun showEdit() {
+        val intent = Intent(this, PhysicalExamReportEditActivity::class.java)
+        intent.putExtra("report_id", reportId)
+        startActivityForResult(intent, REQUEST_EDIT_REPORT)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_EDIT_REPORT && resultCode == Activity.RESULT_OK) {
+            loadReportData()
         }
     }
 

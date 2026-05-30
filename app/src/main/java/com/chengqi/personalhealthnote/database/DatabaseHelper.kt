@@ -955,22 +955,30 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
 
     /**
      * 获取常见症状Top N
+     * 将逗号/顿号分隔的症状文本分词后独立统计，按频率降序排列
      * @param limit 取前N个
      * @return 症状→次数列表
      */
     fun getTopSymptoms(limit: Int = 5): List<Pair<String, Int>> {
-        val result = mutableListOf<Pair<String, Int>>()
         val db = readableDatabase
         val cursor = db.rawQuery(
-            "SELECT $COLUMN_MR_SYMPTOMS, COUNT(*) as cnt FROM $TABLE_MEDICAL_RECORD " +
-            "GROUP BY $COLUMN_MR_SYMPTOMS ORDER BY cnt DESC LIMIT ?",
-            arrayOf(limit.toString())
+            "SELECT $COLUMN_MR_SYMPTOMS FROM $TABLE_MEDICAL_RECORD WHERE $COLUMN_MR_SYMPTOMS IS NOT NULL AND $COLUMN_MR_SYMPTOMS != ''",
+            null
         )
+        val symptomCount = mutableMapOf<String, Int>()
+        val delimiters = Regex("[、，,;；\\n]") // 中文逗号、顿号、英文逗号、分号、换行
         while (cursor.moveToNext()) {
-            result.add(Pair(cursor.getString(0), cursor.getInt(1)))
+            val text = cursor.getString(0)
+            val symptoms = text.split(delimiters).map { it.trim() }.filter { it.isNotEmpty() }
+            for (symptom in symptoms) {
+                symptomCount[symptom] = (symptomCount[symptom] ?: 0) + 1
+            }
         }
         cursor.close()
-        return result
+        return symptomCount.entries
+            .sortedByDescending { it.value }
+            .take(limit)
+            .map { Pair(it.key, it.value) }
     }
 
     /**
@@ -1347,6 +1355,23 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             followUpDate = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MR_FOLLOW_UP_DATE)) ?: "",
             followUpCalendarEventId = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MR_FOLLOW_UP_CALENDAR_EVENT_ID)) ?: ""
         )
+    }
+
+    /**
+     * 查询所有就诊医院名称（去重），用于输入联想
+     */
+    fun getDistinctHospitals(): List<String> {
+        val hospitals = mutableListOf<String>()
+        val db = readableDatabase
+        val cursor = db.rawQuery(
+            "SELECT DISTINCT $COLUMN_MR_HOSPITAL FROM $TABLE_MEDICAL_RECORD WHERE $COLUMN_MR_HOSPITAL IS NOT NULL AND $COLUMN_MR_HOSPITAL != '' ORDER BY $COLUMN_MR_HOSPITAL ASC",
+            null
+        )
+        while (cursor.moveToNext()) {
+            hospitals.add(cursor.getString(0))
+        }
+        cursor.close()
+        return hospitals
     }
 
     /**

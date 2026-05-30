@@ -9,6 +9,8 @@ import android.os.Build
 import android.os.Bundle
 import android.view.MenuItem
 import android.view.View
+import android.widget.ArrayAdapter
+import android.widget.AutoCompleteTextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -72,6 +74,15 @@ class MedicalRecordEditActivity : AppCompatActivity() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.title = "编辑就医记录"
+        setupAutoCompleteHospital()
+    }
+
+    private fun setupAutoCompleteHospital() {
+        val hospitals = dbHelper.getDistinctHospitals()
+        if (hospitals.isNotEmpty()) {
+            val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, hospitals)
+            (binding.etHospital as? AutoCompleteTextView)?.setAdapter(adapter)
+        }
     }
 
     private fun initImageRecyclerView() {

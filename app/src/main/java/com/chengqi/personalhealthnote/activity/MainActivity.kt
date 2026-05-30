@@ -301,6 +301,7 @@ class MainActivity : AppCompatActivity() {
                 0 -> medicalRecordAdapter.selectAll()
                 1 -> healthRecordAdapter.selectAll()
                 2 -> medicineReminderAdapter.selectAll()
+                3 -> examReportAdapter.selectAll()
             }
         }
 
@@ -314,7 +315,8 @@ class MainActivity : AppCompatActivity() {
             0 -> loadMedicalRecords()
             1 -> loadHealthRecords()
             2 -> loadMedicineReminders()
-            3 -> { /* 统计Tab跳转独立Activity，此处无需操作 */ }
+            3 -> loadExamReports()
+            4 -> { /* 统计Tab跳转独立Activity，此处无需操作 */ }
         }
     }
 
@@ -467,6 +469,7 @@ class MainActivity : AppCompatActivity() {
             0 -> medicalRecordAdapter.isInSelectionMode()
             1 -> healthRecordAdapter.isInSelectionMode()
             2 -> medicineReminderAdapter.isInSelectionMode()
+            3 -> examReportAdapter.isInSelectionMode()
             else -> false
         }
     }
@@ -476,6 +479,7 @@ class MainActivity : AppCompatActivity() {
             0 -> medicalRecordAdapter.setSelectionMode(true)
             1 -> healthRecordAdapter.setSelectionMode(true)
             2 -> medicineReminderAdapter.setSelectionMode(true)
+            3 -> examReportAdapter.setSelectionMode(true)
         }
         binding.fabAdd.visibility = View.GONE
         binding.layoutBatchDelete.visibility = View.VISIBLE
@@ -486,6 +490,7 @@ class MainActivity : AppCompatActivity() {
         medicalRecordAdapter.setSelectionMode(false)
         healthRecordAdapter.setSelectionMode(false)
         medicineReminderAdapter.setSelectionMode(false)
+        examReportAdapter.setSelectionMode(false)
         binding.fabAdd.visibility = View.VISIBLE
         binding.layoutBatchDelete.visibility = View.GONE
         updateActionBarTitle()
@@ -511,6 +516,7 @@ class MainActivity : AppCompatActivity() {
             0 -> performMedicalRecordBatchDelete()
             1 -> performHealthRecordBatchDelete()
             2 -> performMedicineReminderBatchDelete()
+            3 -> performExamReportBatchDelete()
         }
     }
 
@@ -606,6 +612,30 @@ class MainActivity : AppCompatActivity() {
                 binding.tvEmpty.text = "暂无用药提醒，点击右下角添加"
             }
             ToastUtils.show(this, "已删除 $deletedCount 条提醒")
+        }
+    }
+
+    private fun performExamReportBatchDelete() {
+        val selectedIds = examReportAdapter.getSelectedIds()
+        if (selectedIds.isEmpty()) {
+            ToastUtils.show(this, "请选择要删除的报告")
+            return
+        }
+        DialogUtils.showConfirm(
+            this,
+            "批量删除确认",
+            "确定要删除选中的 ${selectedIds.size} 份体检报告吗？删除后不可恢复",
+            "确定"
+        ) {
+            var deletedCount = 0
+            selectedIds.forEach { id ->
+                val result = dbHelper.deletePhysicalExamReport(id)
+                if (result > 0) deletedCount++
+            }
+            examReportAdapter.removeRecords(selectedIds)
+            exitSelectionMode()
+            loadExamReports()
+            ToastUtils.show(this, "已删除 $deletedCount 份报告")
         }
     }
 
@@ -749,7 +779,7 @@ class MainActivity : AppCompatActivity() {
             searchMenuItem?.isVisible = true
             sortItem?.isVisible = binding.tabLayout.selectedTabPosition < 4
             filterItem?.isVisible = binding.tabLayout.selectedTabPosition == 0
-            batchDeleteItem?.isVisible = binding.tabLayout.selectedTabPosition < 3
+            batchDeleteItem?.isVisible = binding.tabLayout.selectedTabPosition < 4
             syncItem?.isVisible = true
         }
 

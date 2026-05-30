@@ -115,6 +115,11 @@
             android:parentActivityName=".activity.MainActivity"
             android:exported="false"
             android:label="体检报告详情" />
+        <activity
+            android:name=".activity.PhysicalExamReportEditActivity"
+            android:parentActivityName=".activity.PhysicalExamReportDetailActivity"
+            android:exported="false"
+            android:label="编辑体检报告" />
 
         <!-- 用药提醒通知广播 -->
         <receiver
